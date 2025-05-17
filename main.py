@@ -85,6 +85,7 @@ def add_execution_overview_df(data: Dict[str, pd.DataFrame]) -> None:
 
 def run_pipeline(data: Dict[str, pd.DataFrame], steps: List[Callable]) -> None:
     for step in steps:
+        print(step.__name__)
         step(data)
 
 

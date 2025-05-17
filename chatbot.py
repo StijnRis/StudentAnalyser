@@ -22,6 +22,8 @@ url = f"{server}/api/chat/completions"
 
 def save_cache():
     global cache
+    # Ensure the output directory exists before saving the cache file
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     with open(cache_path, "w") as file:
         file.write(json.dumps(cache))
 
@@ -31,6 +33,7 @@ def load_cache():
     if os.path.exists(cache_path):
         with open(cache_path, "r") as file:
             cache = json.load(file)
+
 
 load_cache()
 
