@@ -27,7 +27,7 @@ def _extract_file_versions(events, username):
         )
 
         notebook_state = event_data.get("notebookState")
-        if notebook_state and notebook_state["notebookContent"] != None:
+        if notebook_state and "notebookContent" in notebook_state and notebook_state["notebookContent"] != None:
             file_path_val = notebook_state["notebookPath"]
 
             cells = notebook_state["notebookContent"]["cells"]
