@@ -1,0 +1,7 @@
+dotenv
+requests
+XlsxWriter
+numpy
+langdetect
+pandas
+seaborn
