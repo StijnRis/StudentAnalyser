@@ -31,7 +31,7 @@ def load_cache():
     if os.path.exists(cache_path):
         with open(cache_path, "r") as file:
             cache = json.load(file)
-
+    print(f"Loaded {len(cache)} questions from cache")
 
 load_cache()
 

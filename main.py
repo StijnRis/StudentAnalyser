@@ -144,8 +144,12 @@ def main():
         # overview
         add_execution_overview_df,
         # Plots
-        plot_violin_plot("interactions", "question_learning_goals", "increase_in_success_rate"),
-        plot_violin_plot("interactions", "question_purpose", "increase_in_success_rate"),
+        plot_violin_plot(
+            "interactions", "question_learning_goals", "increase_in_success_rate"
+        ),
+        plot_violin_plot(
+            "interactions", "question_purpose", "increase_in_success_rate"
+        ),
         plot_violin_plot("interactions", "question_type", "increase_in_success_rate"),
     ]
 
