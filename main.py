@@ -41,6 +41,7 @@ from messages.message_analyser import (
 )
 from users.basic_user_analyser import (
     add_average_learning_goals_success,
+    add_basic_statistics_to_users,
     add_learning_goals_result_series,
     add_users_dataframe,
 )
@@ -135,6 +136,7 @@ def main():
         add_interaction_learning_goals(learning_goals),
         # Users
         add_users_dataframe,
+        add_basic_statistics_to_users,
         add_learning_goals_result_series(learning_goals),
         add_average_learning_goals_success(learning_goals),
         # Interactions part 2

@@ -32,9 +32,13 @@ def write_to_excel(
                 )
                 .all()
             ):
-                # Use getattr to avoid static analysis/type errors, works at runtime
-                x_name = f"x_{worksheet.name}_{col_index}"[:31]
-                y_name = f"y_{worksheet.name}_{col_index}"[:31]
+                all_x = pd.concat(
+                    [ts_df["datetime"] for ts_df in df[col]], ignore_index=True
+                )
+                min_x = all_x.min()
+                max_x = all_x.max()
+                x_name = f"x_{worksheet.name}_{col_index}"
+                y_name = f"y_{worksheet.name}_{col_index}"
                 worksheet_x = workbook.add_worksheet(x_name)
                 worksheet_x.hide()
                 worksheet_y = workbook.add_worksheet(y_name)
@@ -43,7 +47,7 @@ def write_to_excel(
                     for c, (dt, val) in enumerate(
                         zip(ts_df["datetime"], ts_df["result"])
                     ):
-                        worksheet_x.write(row + 1, c, dt)
+                        worksheet_x.write(row + 1, c, (dt - min_x) / (max_x - min_x) * 100.000)
                         worksheet_y.write(row + 1, c, 1 if val else -1)
                     end_column = xl_col_to_name(len(ts_df["datetime"]))
                     worksheet.add_sparkline(

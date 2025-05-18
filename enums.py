@@ -19,7 +19,7 @@ class LearningGoal:
         return self.found_in_error_lambda(error_name, traceback, code)
 
     def __str__(self):
-        return f"LearningGoal(name={self.name})"
+        return f"{self.name}"
 
 
 class QuestionPurpose:
@@ -28,7 +28,7 @@ class QuestionPurpose:
         self.description = description
 
     def __str__(self):
-        return f"QuestionPurpose(name={self.name})"
+        return f"{self.name}"
 
 
 class QuestionType:
@@ -37,7 +37,7 @@ class QuestionType:
         self.description = description
 
     def __str__(self):
-        return f"QuestionType(name={self.name})"
+        return f"{self.name}"
 
 
 def get_question_types() -> List[QuestionType]:

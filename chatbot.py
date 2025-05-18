@@ -22,8 +22,6 @@ url = f"{server}/api/chat/completions"
 
 def save_cache():
     global cache
-    # Ensure the output directory exists before saving the cache file
-    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     with open(cache_path, "w") as file:
         file.write(json.dumps(cache))
 
@@ -68,7 +66,7 @@ def ask_question_without_cache(question):
 
     # Save cache to file every 10 questions
     if len(cache) % 10 == 0:
-        print("10 questions asked")
+        print(f"{len(cache)} questions in cache")
     save_cache()
 
     return cache[question]

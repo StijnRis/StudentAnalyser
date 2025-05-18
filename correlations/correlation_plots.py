@@ -27,7 +27,7 @@ def plot_violin_plot(dataframe_name, x, y):
         plot_df = plot_df.dropna(subset=[x, y])
 
         # Plot
-        plt.figure(figsize=(12, 6))
+        plt.figure(figsize=(19.20, 10.80), dpi=100)
         sns.violinplot(x=x, y=y, data=plot_df)
         plt.xticks(rotation=45, ha="right")
         plt.title(f"{x} vs {y}")

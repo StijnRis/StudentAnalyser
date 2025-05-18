@@ -13,26 +13,58 @@ def add_users_dataframe(data: Dict[str, pd.DataFrame]) -> None:
     """
 
     edits = data["edits"]
-    interactions = data["interactions"]
 
     # Get all unique usernames from both DataFrames
-    users_edits = set(edits["username"].unique())
-    users_interactions = set(interactions["username"].unique())
-    all_users = users_edits.union(users_interactions)
+    usernames = set(edits["username"].unique())
 
     user_rows = []
-    for user in all_users:
-        num_interactions = interactions[interactions["username"] == user].shape[0]
-        num_edits = edits[edits["username"] == user].shape[0]
-        user_rows.append(
-            {
-                "username": user,
-                "num_interactions": num_interactions,
-                "num_edits": num_edits,
-            }
-        )
+    for user in usernames:
+        user_rows.append({"username": user})
 
     users_df = pd.DataFrame(user_rows)
+    data["users"] = users_df
+
+
+def add_basic_statistics_to_users(data: Dict[str, pd.DataFrame]) -> None:
+    """
+    Add basic statistics to the users DataFrame.
+    """
+
+    users_df = data["users"]
+    edits_df = data["edits"]
+    messages_df = data["messages"]
+    executions_df = data["executions"]
+    interactions_df = data["interactions"]
+
+    users_df["num_edits"] = (
+        users_df["username"]
+        .map(edits_df["username"].value_counts())
+        .fillna(0)
+        .astype(int)
+    )
+
+    users_df["num_executions"] = (
+        users_df["username"]
+        .map(executions_df["username"].value_counts())
+        .fillna(0)
+        .astype(int)
+    )
+
+    users_df["num_interactions"] = (
+        users_df["username"]
+        .map(interactions_df["username"].value_counts())
+        .fillna(0)
+        .astype(int)
+    )
+
+    # Calculate percentage_successful using the 'success' column in executions
+    success_counts = executions_df.groupby("username")["success"].sum()
+    total_counts = executions_df.groupby("username").size()
+    users_df["percentage_successful"] = (
+        users_df["username"].map(success_counts)
+        / users_df["username"].map(total_counts)
+    ).fillna(0)
+
     data["users"] = users_df
 
 
