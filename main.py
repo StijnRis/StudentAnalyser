@@ -93,10 +93,13 @@ def run_pipeline(data: Dict[str, pd.DataFrame], steps: List[Callable]) -> None:
 def main():
     load_dotenv()
     # Load all tables into a dictionary
-    volumes_data_location = os.getenv("VOLUMES_DATA_LOCATION")
-    logs_data_location = os.getenv("LOGS_DATA_LOCATION")
-    if not volumes_data_location or not logs_data_location:
-        raise ValueError("VOLUMES_DATA_LOCATION or LOGS_DATA_LOCATION not set in .env")
+    VOLUMES_DATA_LOCATION = os.getenv("VOLUMES_DATA_LOCATION")
+    LOGS_DATA_LOCATION = os.getenv("LOGS_DATA_LOCATION")
+    OUTPUT_DIR = os.getenv("OUTPUT_DIR")
+    if not VOLUMES_DATA_LOCATION or not LOGS_DATA_LOCATION or not OUTPUT_DIR:
+        raise ValueError(
+            "VOLUMES_DATA_LOCATION or LOGS_DATA_LOCATION or OUTPUT_DIR not set in .env"
+        )
 
     filter_username = os.getenv("FILTER_USERNAME")
 
@@ -106,7 +109,7 @@ def main():
 
     # Define your pipeline steps
     pipeline_steps: List[Callable[[Dict[str, pd.DataFrame]], None]] = [
-        load_jupyter_log(logs_data_location.split(","), filter_username),
+        load_jupyter_log(LOGS_DATA_LOCATION.split(","), filter_username),
         # executions
         add_execution_success,
         add_file_version_id,
@@ -122,7 +125,7 @@ def main():
         add_learning_goals_in_error_ai_detection(learning_goals),
         # Edits
         # messages
-        load_chat_log(volumes_data_location.split(","), filter_username),
+        load_chat_log(VOLUMES_DATA_LOCATION.split(","), filter_username),
         add_code_in_message,
         add_message_length,
         add_included_code_snippets,
@@ -145,12 +148,17 @@ def main():
         add_execution_overview_df,
         # Plots
         plot_violin_plot(
-            "interactions", "question_learning_goals", "increase_in_success_rate"
+            "interactions",
+            "question_learning_goals",
+            "increase_in_success_rate",
+            OUTPUT_DIR,
         ),
         plot_violin_plot(
-            "interactions", "question_purpose", "increase_in_success_rate"
+            "interactions", "question_purpose", "increase_in_success_rate", OUTPUT_DIR
         ),
-        plot_violin_plot("interactions", "question_type", "increase_in_success_rate"),
+        plot_violin_plot(
+            "interactions", "question_type", "increase_in_success_rate", OUTPUT_DIR
+        ),
     ]
 
     # Run the pipeline
@@ -158,7 +166,7 @@ def main():
     run_pipeline(data, pipeline_steps)
 
     # Save the results to Excel
-    write_to_excel(data, "output/result.xlsx")
+    write_to_excel(data, f"{OUTPUT_DIR}/result.xlsx")
 
 
 if __name__ == "__main__":

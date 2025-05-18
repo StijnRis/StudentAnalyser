@@ -6,18 +6,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-cache_path = "output/chatbot_cache.json"
-cache: dict[str, str] = {}
+OUTPUT_DIR = os.getenv("OUTPUT_DIR")
+if OUTPUT_DIR is None:
+    raise ValueError("OUTPUT_DIR is not set")
 
-server = os.getenv("OPEN_WEB_UI_SERVER")
-if server is None:
+SERVER = os.getenv("OPEN_WEB_UI_SERVER")
+if SERVER is None:
     raise ValueError("OPEN_WEB_UI_SERVER is not set")
 
-key = os.getenv("OPEN_WEB_UI_API_KEY")
-if key is None:
+SERVER_KEY = os.getenv("OPEN_WEB_UI_API_KEY")
+if SERVER_KEY is None:
     raise ValueError("OPEN_WEB_UI_API_KEY is not set")
 
-url = f"{server}/api/chat/completions"
+cache_path = f"{OUTPUT_DIR}/chatbot_cache.json"
+cache: dict[str, str] = {}
+
+url = f"{SERVER}/api/chat/completions"
 
 
 def save_cache():
@@ -33,7 +37,9 @@ def load_cache():
             cache = json.load(file)
     print(f"Loaded {len(cache)} questions from cache")
 
+
 load_cache()
+
 
 def ask_question(question):
     global cache
@@ -49,7 +55,7 @@ def ask_question_without_cache(question):
     global cache
 
     headers = {
-        "Authorization": f"Bearer {key}",
+        "Authorization": f"Bearer {SERVER_KEY}",
         "Content-Type": "application/json",
     }
 

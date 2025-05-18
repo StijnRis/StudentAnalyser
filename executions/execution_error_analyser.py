@@ -100,7 +100,7 @@ def add_learning_goals_in_error_ai_detection(learning_goals: list[LearningGoal])
                 f"Student code:\n'''\n{code}\n'''\n"
                 f"Error message:\n'''\n{error_value}\n{traceback}\n'''\n"
             )
-            for i in range(5):
+            for i in range(3):
                 if i == 0:
                     response = chatbot.ask_question(query).lower().strip()
                 else:
