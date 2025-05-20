@@ -27,7 +27,11 @@ def _extract_file_versions(events, username):
         )
 
         notebook_state = event_data.get("notebookState")
-        if notebook_state and "notebookContent" in notebook_state and notebook_state["notebookContent"] != None:
+        if (
+            notebook_state
+            and "notebookContent" in notebook_state
+            and notebook_state["notebookContent"] != None
+        ):
             file_path_val = notebook_state["notebookPath"]
 
             cells = notebook_state["notebookContent"]["cells"]
@@ -87,19 +91,29 @@ def _extract_executions_outputs_errors(events, username, start_execution_index):
 
         for output_data in executed_cell["outputs"]:
             output_type = output_data.get("output_type")
-            if output_type == "error" and error_na:
+            execution_id = execution_record["id"]
+            if output_type == "error":
                 traceback = re.sub(
                     r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]",
                     "",
                     "\n".join(output_data["traceback"]),
                 )
-                error_record = {
-                    "execution_id": execution_record["id"],
-                    "error_name": output_data["ename"],
-                    "error_value": output_data["evalue"],
-                    "traceback": traceback,
-                }
-                errors.append(error_record)
+                name = output_data["ename"]
+                if name == "KeyboardInterrupt":
+                    output_record = {
+                        "execution_id": execution_id,
+                        "output_type": output_type,
+                        "output_text": output_data["evalue"] + "\n" + traceback,
+                    }
+                    outputs.append(output_record)
+                else:
+                    error_record = {
+                        "execution_id": execution_id,
+                        "error_name": name,
+                        "error_value": output_data["evalue"],
+                        "traceback": traceback,
+                    }
+                    errors.append(error_record)
             else:
                 output_text = None
                 if output_type == "stream":
@@ -110,9 +124,9 @@ def _extract_executions_outputs_errors(events, username, start_execution_index):
                 # Limit output text length for storage
                 if isinstance(output_text, str) and len(output_text) > 1000:
                     output_text = output_text[:1000] + "..."
-                
+
                 output_record = {
-                    "execution_id": execution_record["id"],
+                    "execution_id": execution_id,
                     "output_type": output_type,
                     "output_text": output_text,
                 }
