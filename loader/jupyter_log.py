@@ -87,7 +87,7 @@ def _extract_executions_outputs_errors(events, username, start_execution_index):
 
         for output_data in executed_cell["outputs"]:
             output_type = output_data.get("output_type")
-            if output_type == "error":
+            if output_type == "error" and error_na:
                 traceback = re.sub(
                     r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]",
                     "",
@@ -106,6 +106,11 @@ def _extract_executions_outputs_errors(events, username, start_execution_index):
                     output_text = output_data["text"]
                 elif output_type == "execute_result":
                     output_text = output_data["data"]
+
+                # Limit output text length for storage
+                if isinstance(output_text, str) and len(output_text) > 1000:
+                    output_text = output_text[:1000] + "..."
+                
                 output_record = {
                     "execution_id": execution_record["id"],
                     "output_type": output_type,
@@ -181,6 +186,7 @@ def load_jupyter_log(
     def load_jupyter_log(
         data: Dict[str, pd.DataFrame],
     ) -> None:
+        print(f"Loading Jupyter logs from folders: {folder_paths}")
         # Lists to accumulate records for each DataFrame
         file_versions = []
         executions = []

@@ -61,6 +61,10 @@ def write_to_excel(
                         },
                     )
                 worksheet.set_column(col_index, col_index, 20)
+            elif pd.api.types.is_datetime64_any_dtype(df[col]):
+                date_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
+                worksheet.write_column(1, col_index, df[col], date_format)
+                worksheet.set_column(col_index, col_index, 19)
             elif df[col].dtype == "object":
                 df[col] = df[col].apply(
                     lambda x: (

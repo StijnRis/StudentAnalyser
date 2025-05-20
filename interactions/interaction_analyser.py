@@ -334,7 +334,7 @@ def add_increase_in_success_rate(
         before_ratios = []
         after_ratios = []
         for goal in question_goals:
-            column = f"learning_goal_result_series_{goal.name}"
+            column = f"{goal.name} series"
             learning_goal_time_series = user_row[column]
             before = learning_goal_time_series[
                 learning_goal_time_series["datetime"] < datetime

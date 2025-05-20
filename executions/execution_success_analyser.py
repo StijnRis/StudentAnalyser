@@ -167,28 +167,29 @@ def add_constructs_of_added_code(data: Dict[str, pd.DataFrame]) -> None:
         right_on="prev_id",
         how="left",
     )
-
-    def get_ast_nodes_for_lines(code: str, lines: list[int]):
+        
+    def get_ast_nodes_for_lines(row):
+        code = row["code"]
+        lines = row["line_numbers_of_new_code"]
         try:
             parsed_ast = ast.parse(code)
         except Exception:
             return []
+        
         nodes = []
-        for node in ast.walk(parsed_ast):
+        def dfs(node):
             if hasattr(node, "lineno") and getattr(node, "lineno", None) in lines:
                 nodes.append(node)
+            for child in ast.iter_child_nodes(node):
+                dfs(child)
+        dfs(parsed_ast)
+        
         return nodes
 
-    def compute_added_constructs(row):
-        code = row["code"]
-        lines = row["line_numbers_of_new_code"]
-        if not isinstance(lines, list):
-            return []
-        return get_ast_nodes_for_lines(code, lines)
 
     # Compute added constructs for each execution
     execution_successes_df["added_constructs"] = merged.apply(
-        compute_added_constructs, axis=1
+        get_ast_nodes_for_lines, axis=1
     ).astype(object)
     data["execution_successes"] = execution_successes_df
 
@@ -203,11 +204,12 @@ def add_learning_goals_of_added_code(learning_goals: list[LearningGoal]):
         execution_successes_df = data["execution_successes"]
 
         def detect_learning_goals(row):
-            constructs = row.get("added_constructs", [])
+            constructs = row["added_constructs"]
             matched_goals = []
-            for goal in learning_goals:
-                if any(goal.is_applied(construct) for construct in constructs):
-                    matched_goals.append(goal)
+            for construct in constructs:
+                for goal in learning_goals:
+                    if goal.is_applied(construct):
+                        matched_goals.append(goal)
             return matched_goals
 
         execution_successes_df["learning_goals_of_added_code"] = (

@@ -83,6 +83,33 @@ def add_execution_overview_df(data: Dict[str, pd.DataFrame]) -> None:
 
     data["execution_overview"] = overview_df
 
+def add_interaction_overview_df(data: Dict[str, pd.DataFrame]) -> None:
+    """
+    Merge all DataFrames that have an 'interaction_id' column into a single overview DataFrame.
+    Start with the 'interactions' table (using 'id' as the key), then merge all others on 'interaction_id'.
+    The resulting DataFrame is stored as 'interaction_overview' in the data dict.
+    """
+
+    overview_df = data["interactions"].copy()
+
+    overview_df = overview_df.merge(
+        data["messages"],
+        left_on="answer_id",
+        right_on="id",
+        how="left",
+        suffixes=(None, f"_answer")
+    )
+
+    overview_df = overview_df.merge(
+        data["messages"],
+        left_on="question_id",
+        right_on="id",
+        how="left",
+        suffixes=(None, f"_question")
+    )
+
+    data["interaction_overview"] = overview_df
+
 
 def run_pipeline(data: Dict[str, pd.DataFrame], steps: List[Callable]) -> None:
     for step in steps:
@@ -146,6 +173,7 @@ def main():
         add_increase_in_success_rate,
         # overview
         add_execution_overview_df,
+        add_interaction_overview_df,
         # Plots
         plot_violin_plot(
             "interactions",

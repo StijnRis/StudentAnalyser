@@ -89,13 +89,11 @@ def add_learning_goals_in_error_ai_detection(learning_goals: list[LearningGoal])
             error_value = row["error_value"]
             traceback = row["traceback"]
             query = (
-                "You are an instructor tasked with analyzing a student's programming mistake.\n"
-                "Your goal is to identify which learning goals the student appears to have struggled with, based on the provided code and error message.\n"
-                "A list of learning goals is provided below, each with a name and an explanation.\n"
-                "Use the explanations to help inform your reasoning, but in your final verdict, refer only to the *names* of the relevant learning goals.\n\n"
-                "First, provide a reasoning that connects the error to one or more of the learning goals. "
-                "Then, on the last line, write your final classification in exactly this format:\n"
-                "'The learning goals are [comma-separated names of learning goals]'.\n\n"
+                "You are an instructor tasked with analyzing a programming mistake.\n"
+                " Your goal is to determine which learning goals are relevant to the error message. You will be provided with the error message, the corresponding code, and a list of learning goals—each with a name and a brief explanation.\n"
+                "Please reason step-by-step to arrive at your conclusion\n"
+                "On the last line of your response, write your final classification in exactly this format:\n"
+                "'The learning goals are [list of names of learning goals]'.\n\n"
                 f"Learning goals:\n{learning_goals_string}\n\n"
                 f"Student code:\n'''\n{code}\n'''\n"
                 f"Error message:\n'''\n{error_value}\n{traceback}\n'''\n"

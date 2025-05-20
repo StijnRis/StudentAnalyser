@@ -12,8 +12,11 @@ class LearningGoal:
     ):
         self.name = name
         self.description = description
-        self.is_applied = is_applied
+        self.is_applied_lambda = is_applied
         self.found_in_error_lambda = found_in_error
+    
+    def is_applied(self, node: ast.AST) -> bool:
+        return self.is_applied_lambda(node)
 
     def found_in_error(self, error_name, traceback, code):
         return self.found_in_error_lambda(error_name, traceback, code)

@@ -99,7 +99,7 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
 
         # For each user and each learning goal, create a Series of (datetime, result)
         for goal in learning_goals:
-            col_name = f"learning_goal_result_series_{goal.name}"
+            col_name = f"{goal.name} series"
 
             def build_result_series(user):
                 user_success = success_merged[
@@ -146,7 +146,7 @@ def add_average_learning_goals_success(learning_goals: list[LearningGoal]):
 
         users_df = data["users"]
         for goal in learning_goals:
-            col_name = f"learning_goal_average_success_{goal.name}"
+            col_name = f"{goal.name} average success"
 
             def compute_average(user_result_df):
                 num_true = (user_result_df["result"] == True).sum()
@@ -157,7 +157,7 @@ def add_average_learning_goals_success(learning_goals: list[LearningGoal]):
                 return num_true / total
 
             # Find the column with the result series for this goal
-            result_col = f"learning_goal_result_series_{goal.name}"
+            result_col = f"{goal.name} series"
             users_df[col_name] = users_df[result_col].apply(compute_average)
         data["users"] = users_df
 

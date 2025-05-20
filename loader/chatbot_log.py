@@ -14,6 +14,7 @@ def load_chat_log(
     """
 
     def load_chat_log(data: Dict[str, pd.DataFrame]) -> None:
+        print(f"Loading chat logs from folders: {folder_paths}")
         messages = []
         for folder_path in folder_paths:
             for username in os.listdir(folder_path):
