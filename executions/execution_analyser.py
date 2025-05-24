@@ -70,3 +70,38 @@ def add_id_of_previous_executed_file_version(
         find_prev_id, axis=1
     )
     data["executions"] = executions_df
+
+def add_execution_overview_df(data: Dict[str, pd.DataFrame]) -> None:
+    """
+    Merge all DataFrames that have an 'execution_id' column into a single overview DataFrame.
+    Start with the 'executions' table (using 'id' as the key), then merge all others on 'execution_id',
+    and finally merge the file_versions table on 'file_version_id' from executions.
+    The resulting DataFrame is stored as 'execution_overview' in the data dict.
+    """
+
+    overview_df = data["executions"].copy()
+
+    # Merge file_versions on file_version_id from executions
+    file_versions_df = data["file_versions"]
+    overview_df = overview_df.merge(
+        file_versions_df,
+        left_on="file_version_id",
+        right_on="id",
+        how="left",
+        suffixes=(None, "_file_version"),
+    )
+
+    # Merge all DataFrames with 'execution_id' except executions itself
+    for key, df in data.items():
+        if key == "executions":
+            continue
+        if "execution_id" in df.columns:
+            overview_df = overview_df.merge(
+                df,
+                left_on="id",
+                right_on="execution_id",
+                how="left",
+                suffixes=(None, f"_{key}"),
+            )
+
+    data["execution_overview"] = overview_df

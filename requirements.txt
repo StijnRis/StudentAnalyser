@@ -5,3 +5,5 @@ numpy
 langdetect
 pandas
 seaborn
+openpyxl
+aiohttp

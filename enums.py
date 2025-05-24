@@ -49,48 +49,44 @@ def get_question_types() -> List[QuestionType]:
     """
     return [
         QuestionType(
-            "Answer to question of chatbot",
-            "The user is responding to a question asked by the chatbot rather than asking a new one.",
+            "Reply to message of chatbot",
+            "The user is responding to a message of the chatbot.",
         ),
         QuestionType(
             "Code comprehension",
-            "The user is asking for an explanation of a piece of code, how it works, or what it does.",
+            "The user is asking for an explanation of a piece of code, how it works, what it does, or why it is producing unexpected results.",
         ),
         QuestionType(
             "Concept comprehension",
-            "The user is asking for an explanation of a theoretical or abstract concept, often related to programming, science, or another domain.",
+            "The user is requesting an explanation of a concept, method, technique, idea, or underlying principle.",
         ),
         QuestionType(
             "Error comprehension",
-            "The user is asking for help in understanding an error message, its cause, and how to fix it.",
+            "The user is asking for help in understanding a specific error message (e.g., pasting an error message and asking what it means).",
         ),
         QuestionType(
-            "Question comprehension",
-            "The user is asking for clarification about a question itself, such as what it means or how to interpret it.",
+            "Assignment comprehension",
+            "The user is asking for clarification about a assignment itself, such as what it means or how to interpret it.",
         ),
         QuestionType(
-            "Copied question",
-            "The user has copied and pasted a question from another source without modification.",
+            "Copied assignment",
+            "The user has copied and pasted the assignment. These often appear as a set of instructions.",
         ),
         QuestionType(
             "Fix code",
-            "The user is asking for help in correcting a bug, syntax issue, or logical error in a piece of code.",
+            "The user is asking the chatbot to fix broken code.",
         ),
         QuestionType(
             "Task delegation",
-            "The user is asking the chatbot to perform a specific task, such as generating code, writing a document, or performing an analysis.",
+            "The user is asking the chatbot to perform a task, such as generating code or calculating something.",
         ),
         QuestionType(
             "Pasted code without context",
             "The user has pasted a piece of code without providing an explicit question or any context.",
         ),
         QuestionType(
-            "Other",
-            "The user's question does not fit into any of the predefined categories.",
-        ),
-        QuestionType(
             "Not detected",
-            "Unable to determine the type of question due to ambiguity or lack of information.",
+            "Unable to determine the type of question due to ambiguity, lack of information or not fitting any predefined category.",
         ),
     ]
 

@@ -32,7 +32,7 @@ def plot_violin_plot(dataframe_name, x, y, output_dir):
         plt.xticks(rotation=45, ha="right")
         plt.title(f"{x} vs {y}")
         plt.tight_layout()
-        plt.savefig(f"{output_dir}/{x}_vs_{y}_violin_plot.png")
+        plt.savefig(f"{output_dir}/{dataframe_name}_{x}_vs_{y}_violin_plot.png")
         plt.close()
 
     return plot_violin_plot

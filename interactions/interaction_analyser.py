@@ -119,44 +119,50 @@ def add_interaction_type(
             suffixes=("", "_question"),
         )
 
-        question_types_list = []
-        for _, row in merged.iterrows():
+        question_types_explanation = "\n".join(
+            [
+                f"{question_type.name}: {question_type.description}"
+                for question_type in question_types
+            ]
+        )
+
+        def prompt_fn(row):
             question_body = row["body"]
-            detected_types = []
-            question_types_explanation = "\n".join(
-                [
-                    f"{question_type.name}: {question_type.description}"
-                    for question_type in question_types
-                ]
-            )
-            prompt = (
-                "You are an expert question type classifier.\n"
-                "For each incoming user message, follow this procedure:\n"
-                "1. Carefully analyze the message and think through its intent.\n"
-                "2. Compare it against the list of predefined question types below.\n"
-                "3. On the final line, deliver the verdict in this format:\n"
-                "   The question is of type: [TYPE]\n\n"
+            # return (
+            #     "Let's work this out in a step by step way to be sure we have the right answer.\n"
+            #     "What is the question type of the following question of a student?\n"
+            #     "Format final line as: The question is of type: [TYPE]\n\n"
+            #     "Here are the available types: \n"
+            #     f"{question_types_explanation}\n\n"
+            #     f"Now classify the following message:\n'''\n{question_body}\n'''\n"
+            # )
+            return (
+                "Let's meticulously analyze the following student query to accurately determine its question type. Given the provided categories, carefully consider the nuances of the student's phrasing and intent. Beyond a simple match, explain why you believe it fits a particular category and why it doesn't align with other seemingly similar types. Your final classification should be robustly justified.\n"
                 "Here are the available types: \n"
                 f"{question_types_explanation}\n\n"
                 f"Now classify the following message:\n'''\n{question_body}\n'''\n"
             )
-            for i in range(3):
-                if i == 0:
-                    response = chatbot.ask_question(prompt)
-                else:
-                    response = chatbot.ask_question_without_cache(prompt)
-                response = response.lower().strip()
-                last_sentence = response.split("\n")[-1]
-                for question_type in question_types:
-                    if question_type.name.lower() in last_sentence:
-                        detected_types.append(question_type)
-                if len(detected_types) == 1:
-                    question_types_list.append(detected_types[0])
-                    break
-            else:
-                question_types_list.append(None)
 
-        interactions["question_type"] = question_types_list
+        def extract_fn(response, row):
+            last_sentence = response.split("\n")[-1].lower().strip()
+            detected_types = [
+                qt for qt in question_types if qt.name.lower() in last_sentence
+            ]
+            if len(detected_types) == 1:
+                return detected_types[0]
+            raise ValueError("No valid question type detected")
+
+        merged = chatbot.add_column_through_chatbot(
+            merged,
+            column_name="question_type",
+            prompt_fn=prompt_fn,
+            extract_fn=extract_fn,
+            max_retries=3,
+        )
+
+        interactions["question_type"] = merged["question_type"]
+        interactions["question_type_prompt"] = merged["question_type_prompt"]
+        interactions["question_type_response"] = merged["question_type_response"]
 
     return add_question_type
 
@@ -168,6 +174,7 @@ def add_interaction_purpose(
         """
         Add question purpose to the interactions DataFrame by asking the chatbot for each question body.
         """
+
         messages = data["messages"]
         interactions = data["interactions"]
 
@@ -187,18 +194,17 @@ def add_interaction_purpose(
             suffixes=("", "_answer"),
         ).rename(columns={"body": "answer_body"})
 
-        question_purposes_list = []
-        for _, row in merged.iterrows():
+        question_purposes_explanation = "\n - ".join(
+            [
+                f"{question_purpose.name}: {question_purpose.description}"
+                for question_purpose in question_purposes
+            ]
+        )
+
+        def prompt_fn(row):
             question_body = row["question_body"]
             answer_body = row["answer_body"]
-            detected_purposes = []
-            question_purposes_explanation = "\n - ".join(
-                [
-                    f"{question_purpose.name}: {question_purpose.description}"
-                    for question_purpose in question_purposes
-                ]
-            )
-            prompt = (
+            return (
                 "You are an expert question purpose classifier.\n"
                 "For each incoming user message, follow this procedure:\n"
                 "1. Carefully analyze the message and think through its intent.\n"
@@ -210,22 +216,27 @@ def add_interaction_purpose(
                 f"Classify the following message:\n'''\n{question_body}\n'''\n"
                 f"AI response:\n'''\n{answer_body}\n'''\n"
             )
-            for i in range(3):
-                if i == 0:
-                    response = chatbot.ask_question(prompt)
-                else:
-                    response = chatbot.ask_question_without_cache(prompt)
-                response = response.lower().strip()
-                last_sentence = response.split("\n")[-1]
-                for question_purpose in question_purposes:
-                    if question_purpose.name.lower() in last_sentence:
-                        detected_purposes.append(question_purpose)
-                if len(detected_purposes) == 1:
-                    question_purposes_list.append(detected_purposes[0])
-                    break
-            else:
-                question_purposes_list.append(None)
-        interactions["question_purpose"] = question_purposes_list
+
+        def extract_fn(response, row):
+            last_sentence = response.lower().strip().split("\n")[-1]
+            detected_purposes = [
+                qp for qp in question_purposes if qp.name.lower() in last_sentence
+            ]
+            if len(detected_purposes) == 1:
+                return detected_purposes[0]
+            raise ValueError("No valid question purpose detected")
+
+        merged = chatbot.add_column_through_chatbot(
+            merged,
+            column_name="question_purpose",
+            prompt_fn=prompt_fn,
+            extract_fn=extract_fn,
+            max_retries=3,
+        )
+
+        interactions["question_purpose"] = merged["question_purpose"]
+        interactions["question_purpose_prompt"] = merged["question_purpose_prompt"]
+        interactions["question_purpose_response"] = merged["question_purpose_response"]
 
     return add_question_purpose
 
@@ -257,15 +268,14 @@ def add_interaction_learning_goals(
             suffixes=("", "_answer"),
         ).rename(columns={"body": "answer_body"})
 
-        question_learning_goals_list = []
-        for _, row in merged.iterrows():
+        learning_goal_explanations = "\n".join(
+            [f"{e.name}: {e.description}" for e in learning_goals]
+        )
+
+        def prompt_fn(row):
             question_body = row["question_body"]
             answer_body = row["answer_body"]
-            detected_goals = []
-            learning_goal_explanations = "\n".join(
-                [f"{e.name}: {e.description}" for e in learning_goals]
-            )
-            prompt = (
+            return (
                 "You are an expert question learning goal classifier.\n"
                 "For each incoming user message, follow this procedure:\n"
                 "1. Carefully analyze the message and think through its intent.\n"
@@ -277,22 +287,30 @@ def add_interaction_learning_goals(
                 f"AI response:\n'''\n{answer_body}\n'''\n"
             )
 
-            for i in range(3):
-                if i == 0:
-                    response = chatbot.ask_question(prompt)
-                else:
-                    response = chatbot.ask_question_without_cache(prompt)
-                response = response.lower().strip()
-                last_sentence = response.split("\n")[-1]
-                for learning_goal in learning_goals:
-                    if learning_goal.name.lower() in last_sentence:
-                        detected_goals.append(learning_goal)
-                if len(detected_goals) > 0:
-                    question_learning_goals_list.append(detected_goals)
-                    break
-            else:
-                question_learning_goals_list.append("")
-        interactions["question_learning_goals"] = question_learning_goals_list
+        def extract_fn(response, row):
+            last_sentence = response.lower().strip().split("\n")[-1]
+            detected_goals = [
+                lg for lg in learning_goals if lg.name.lower() in last_sentence
+            ]
+            if len(detected_goals) > 0:
+                return detected_goals
+            raise ValueError("No valid learning goal detected")
+
+        merged = chatbot.add_column_through_chatbot(
+            merged,
+            column_name="question_learning_goals",
+            prompt_fn=prompt_fn,
+            extract_fn=extract_fn,
+            max_retries=3,
+        )
+
+        interactions["question_learning_goals"] = merged["question_learning_goals"]
+        interactions["question_learning_goals_prompt"] = merged[
+            "question_learning_goals_prompt"
+        ]
+        interactions["question_learning_goals_response"] = merged[
+            "question_learning_goals_response"
+        ]
 
     return add_question_learning_goals
 
@@ -367,3 +385,31 @@ def add_increase_in_success_rate(
 
     interactions["increase_in_success_rate"] = increases
     data["interactions"] = interactions
+
+
+def add_interaction_overview_df(data: Dict[str, pd.DataFrame]) -> None:
+    """
+    Merge all DataFrames that have an 'interaction_id' column into a single overview DataFrame.
+    Start with the 'interactions' table (using 'id' as the key), then merge all others on 'interaction_id'.
+    The resulting DataFrame is stored as 'interaction_overview' in the data dict.
+    """
+
+    overview_df = data["interactions"].copy()
+
+    overview_df = overview_df.merge(
+        data["messages"],
+        left_on="question_id",
+        right_on="id",
+        how="left",
+        suffixes=(None, f"_question"),
+    )
+
+    overview_df = overview_df.merge(
+        data["messages"],
+        left_on="answer_id",
+        right_on="id",
+        how="left",
+        suffixes=(None, f"_answer"),
+    )
+
+    data["interaction_overview"] = overview_df
