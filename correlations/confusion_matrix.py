@@ -9,10 +9,13 @@ def plot_confusion_matrix(dataframe_name, x, y, output_dir):
         # Convert both columns to string representations
         df[x] = df[x].astype(str)
         df[y] = df[y].astype(str)
-        # Generate the confusion matrix
+        # Get all unique labels from both columns, sort for consistent order
+        all_labels = sorted(set(df[x].unique()) | set(df[y].unique()))
+        # Generate the confusion matrix with fixed labels/order
         cm = pd.crosstab(df[x], df[y], rownames=[x], colnames=[y], dropna=False)
+        cm = cm.reindex(index=all_labels, columns=all_labels, fill_value=0)
         # Plot the confusion matrix
-        plt.figure(figsize=(max(8, len(cm.columns) * 0.8), max(6, len(cm.index) * 0.6)))
+        plt.figure(figsize=(19.20, 10.80), dpi=100)
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
         plt.title(f"Confusion Matrix: {x} vs {y}")
         plt.xlabel(y)

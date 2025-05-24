@@ -42,16 +42,17 @@ def load_cache():
 load_cache()
 
 
-async def ask_question_async(question):
+async def ask_question_async(question, session):
     global cache
 
     if question in cache:
         return cache[question]
 
-    return await ask_question_without_cache_async(question)
+    return await ask_question_without_cache_async(question, session)
 
-async def ask_question_without_cache_async(question):
+async def ask_question_without_cache_async(question, session):
     print("Asking question to chatbot (async)")
+    start_time = asyncio.get_event_loop().time()
     global cache
 
     headers = {
@@ -63,53 +64,36 @@ async def ask_question_without_cache_async(question):
         "messages": [{"role": "user", "content": question}],
     }
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, headers=headers, json=data) as response:
-            if response.status != 200:
-                text = await response.text()
-                raise ValueError(f"Error: {response.status} - {text}")
-            result = await response.json()
-    cache[question] = result["choices"][0]["message"]["content"]
+    async with session.post(url, headers=headers, json=data) as response:
+        if response.status != 200:
+            text = await response.text()
+            raise ValueError(f"Error: {response.status} - {text}")
+        result = await response.json()
+    response_text = result["choices"][0]["message"]["content"]
 
-    # Save cache to file every 10 questions
-    if len(cache) % 10 == 0:
-        print(f"{len(cache)} questions in cache")
+    end_time = asyncio.get_event_loop().time()
+    print(f"Response time: {end_time - start_time:.2f} seconds ({len(response_text)} characters)")
+
+    # Save to cache
+    cache[question] = response_text
     save_cache()
 
     return cache[question]
-
-async def ask_chatbot_with_retries_async(prompt, validate_fn, max_retries=3):
-    """
-    Async version: ask a chatbot a question, retrying if the response is not valid.
-    validate_fn: function that takes the response and returns True if valid, False otherwise.
-    Returns the (response, prompt, is_valid) tuple.
-    """
-    last_response = None
-    for i in range(max_retries):
-        if i == 0:
-            response = await ask_question_async(prompt)
-        else:
-            response = await ask_question_without_cache_async(prompt)
-        last_response = response
-        if validate_fn(response):
-            return response, prompt, True
-    return last_response, prompt, False
-
 
 def add_column_through_chatbot(df, column_name, prompt_fn, extract_fn, max_retries=3):
     """
     Adds extracted answer of chatbot to the DataFrame using async requests, but is itself synchronous.
     """
 
-    async def ask_with_retries_async(row):
+    async def ask_with_retries_async(row, session):
         prompt = prompt_fn(row)
         last_response = None
         for i in range(max_retries):
             if i == 0:
                 # Use sync ask_question_async for first try
-                response = await ask_question_async(prompt)
+                response = await ask_question_async(prompt, session)
             else:
-                response = await ask_question_without_cache_async(prompt)
+                response = await ask_question_without_cache_async(prompt, session)
             last_response = response
             try:
                 value = extract_fn(response, row)
@@ -120,12 +104,14 @@ def add_column_through_chatbot(df, column_name, prompt_fn, extract_fn, max_retri
 
     async def process_all(rows):
         sem = asyncio.Semaphore(2)
+        connector = aiohttp.TCPConnector()
+        session = aiohttp.ClientSession(connector=connector)
 
-        async def sem_task(row):
+        async def sem_task(row, session):
             async with sem:
-                return await ask_with_retries_async(row)
+                return await ask_with_retries_async(row, session)
 
-        tasks = [sem_task(row) for row in rows]
+        tasks = [sem_task(row, session) for row in rows]
         return await asyncio.gather(*tasks)
 
     rows = list(df.to_dict(orient="records"))

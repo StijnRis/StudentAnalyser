@@ -113,7 +113,7 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
                 user_error = error_merged[
                     (error_merged["username"] == user)
                     & (
-                        error_merged["learning_goals_in_error_ai_detection"].apply(
+                        error_merged["learning_goals_in_error_by_ai_detection"].apply(
                             lambda goals: (goal in goals)
                         )
                     )

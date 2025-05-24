@@ -36,7 +36,7 @@ def run_check_question_analyser_pipeline():
         plot_confusion_matrix("interactions", "question_type_by_Thom", "question_type", OUTPUT_DIR),
         plot_confusion_matrix("interactions", "question_type_by_Stijn", "question_type", OUTPUT_DIR),
         # Save to Excel
-        write_to_excel(f"{OUTPUT_DIR}/validate.xlsx"),
+        write_to_excel(f"{OUTPUT_DIR}/check_question_analyser.xlsx"),
     ]
 
     # Run the pipeline

@@ -90,7 +90,7 @@ def write_to_excel(file_path: str):
                     max_row,
                     max_col - 1,
                     {
-                        "columns": [{"header": col} for col in df.columns],
+                        "columns": [{"header": str(col)} for col in df.columns],
                         "name": f"{key}_table",
                     },
                 )

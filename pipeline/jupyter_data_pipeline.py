@@ -10,17 +10,17 @@ from executions.execution_analyser import (
     add_execution_success,
     add_file_version_id,
     add_id_of_previous_executed_file_version,
+    add_surrounding_executions,
 )
 from executions.execution_error_analyser import (
-    add_learning_goal_in_error_pattern_detection,
-    add_learning_goals_in_error_ai_detection,
+    add_error_learning_goal_by_ai_detection,
+    add_error_learning_goal_by_error_pattern_detection,
 )
 from executions.execution_success_analyser import (
     add_constructs_of_added_code,
     add_execution_successes_df,
     add_learning_goals_of_added_code,
-    add_line_numbers_of_new_code,
-    add_prev_successful_executed_file_version_id,
+    add_line_numbers_of_new_code
 )
 from interactions.interaction_analyser import (
     add_active_file,
@@ -74,15 +74,15 @@ def run_jupyter_data_pipeline():
         add_execution_success,
         add_file_version_id,
         add_id_of_previous_executed_file_version,
+        add_surrounding_executions,
         # execution_success
         add_execution_successes_df,
-        add_prev_successful_executed_file_version_id,
         add_line_numbers_of_new_code,
         add_constructs_of_added_code,
         add_learning_goals_of_added_code(learning_goals),
         # execution_errors
-        add_learning_goal_in_error_pattern_detection(learning_goals),
-        add_learning_goals_in_error_ai_detection(learning_goals),
+        add_error_learning_goal_by_error_pattern_detection(learning_goals),
+        add_error_learning_goal_by_ai_detection(learning_goals),
         # Edits
         # messages
         load_chat_log(VOLUMES_DATA_LOCATION.split(","), FILTER_USERNAME),
@@ -121,10 +121,8 @@ def run_jupyter_data_pipeline():
             "interactions", "question_type", "increase_in_success_rate", OUTPUT_DIR
         ),
         # Save to Excel
-        write_to_excel(f"{OUTPUT_DIR}/result.xlsx")
+        write_to_excel(f"{OUTPUT_DIR}/jupyter_data.xlsx"),
     ]
 
     # Run the pipeline
     run_pipeline(pipeline_steps)
-
-

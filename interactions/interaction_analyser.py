@@ -128,16 +128,10 @@ def add_interaction_type(
 
         def prompt_fn(row):
             question_body = row["body"]
-            # return (
-            #     "Let's work this out in a step by step way to be sure we have the right answer.\n"
-            #     "What is the question type of the following question of a student?\n"
-            #     "Format final line as: The question is of type: [TYPE]\n\n"
-            #     "Here are the available types: \n"
-            #     f"{question_types_explanation}\n\n"
-            #     f"Now classify the following message:\n'''\n{question_body}\n'''\n"
-            # )
             return (
-                "Let's meticulously analyze the following student query to accurately determine its question type. Given the provided categories, carefully consider the nuances of the student's phrasing and intent. Beyond a simple match, explain why you believe it fits a particular category and why it doesn't align with other seemingly similar types. Your final classification should be robustly justified.\n"
+                "Let's work this out in a step by step way to be sure we have the right answer.\n"
+                "What is the question type of the following question of a student?\n"
+                "Format final line as: The question is of type: [TYPE]\n\n"
                 "Here are the available types: \n"
                 f"{question_types_explanation}\n\n"
                 f"Now classify the following message:\n'''\n{question_body}\n'''\n"
