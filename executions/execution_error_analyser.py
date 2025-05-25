@@ -4,9 +4,6 @@ import pandas as pd
 
 import chatbot
 from enums import LearningGoal
-from executions.execution_error_cols import ExecutionErrorCols
-from executions.execution_cols import ExecutionsCols
-from file_versions.file_version_cols import FileVersionsCols
 
 
 def add_error_learning_goal_by_error_pattern_detection(
@@ -25,11 +22,9 @@ def add_error_learning_goal_by_error_pattern_detection(
 
         # Merge execution_errors with executions on execution_id
         merged = execution_errors_df.merge(
-            executions_df[
-                [ExecutionsCols.ID.value, ExecutionsCols.FILE_VERSION_ID.value]
-            ],
-            left_on=ExecutionErrorCols.EXECUTION_ID.value,
-            right_on=ExecutionsCols.ID.value,
+            executions_df[["id", "file_version_id"]],
+            left_on="execution_id",
+            right_on="id",
             how="left",
         )
         # Merge with file_versions to get the code and file
@@ -37,11 +32,11 @@ def add_error_learning_goal_by_error_pattern_detection(
             file_versions_df.rename(columns={"id": "file_version_id"})[
                 [
                     "file_version_id",
-                    FileVersionsCols.FILE.value,
-                    FileVersionsCols.CODE.value,
+                    "file",
+                    "code",
                 ]
             ],
-            left_on=ExecutionErrorCols.ID.value,
+            left_on="id",
             right_on="file_version_id",
             how="left",
         )
@@ -51,16 +46,16 @@ def add_error_learning_goal_by_error_pattern_detection(
             matched_goals = []
             for learning_goal in learning_goals:
                 if learning_goal.found_in_error(
-                    error_name=row[ExecutionErrorCols.ERROR_NAME.value],
-                    traceback=row[ExecutionErrorCols.TRACEBACK.value],
-                    code=row[FileVersionsCols.CODE.value],
+                    error_name=row["error_name"],
+                    traceback=row["traceback"],
+                    code=row["code"],
                 ):
                     matched_goals.append(learning_goal)
             return matched_goals
 
-        execution_errors_df[
-            ExecutionErrorCols.LEARNING_GOALS_IN_ERROR_BY_ERROR_PATTERN_DETECTION.value
-        ] = merged.apply(detect_learning_goals, axis=1)
+        execution_errors_df["learning_goals_in_error_by_error_pattern_detection"] = (
+            merged.apply(detect_learning_goals, axis=1)
+        )
 
     return add_error_learning_goal_by_error_pattern_detection
 
@@ -93,9 +88,9 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
         )
 
         def prompt_fn(row):
-            code = row[FileVersionsCols.CODE.value]
-            error_value = row[ExecutionErrorCols.ERROR_VALUE.value]
-            traceback = row[ExecutionErrorCols.TRACEBACK.value]
+            code = row["code"]
+            error_value = row["error_value"]
+            traceback = row["traceback"]
             return (
                 "You are an instructor tasked with analyzing a programming mistake.\n"
                 "Your goal is to determine which learning goals are relevant to the error message. You will be provided with the error message, the corresponding code, and a list of learning goals—each with a name and a brief explanation.\n"
@@ -120,23 +115,23 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
 
         merged = chatbot.add_column_through_chatbot(
             merged,
-            column_name=ExecutionErrorCols.LEARNING_GOALS_IN_ERROR_BY_AI_DETECTION.value,
+            column_name="learning_goals_in_error_by_ai_detection",
             prompt_fn=prompt_fn,
             extract_fn=extract_fn,
             max_retries=3,
         )
         execution_errors_df[
-            ExecutionErrorCols.LEARNING_GOALS_IN_ERROR_BY_AI_DETECTION.value
-        ] = merged[ExecutionErrorCols.LEARNING_GOALS_IN_ERROR_BY_AI_DETECTION.value]
+            "learning_goals_in_error_by_ai_detection"
+        ] = merged["learning_goals_in_error_by_ai_detection"]
         execution_errors_df[
-            ExecutionErrorCols.LEARNING_GOALS_IN_ERROR_BY_AI_DETECTION_PROMPT.value
+            "learning_goals_in_error_by_ai_detection_prompt"
         ] = merged[
-            ExecutionErrorCols.LEARNING_GOALS_IN_ERROR_BY_AI_DETECTION_PROMPT.value
+            "learning_goals_in_error_by_ai_detection_prompt"
         ]
         execution_errors_df[
-            ExecutionErrorCols.LEARNING_GOALS_IN_ERROR_BY_AI_DETECTION_RESPONSE.value
+            "learning_goals_in_error_by_ai_detection_response"
         ] = merged[
-            ExecutionErrorCols.LEARNING_GOALS_IN_ERROR_BY_AI_DETECTION_RESPONSE.value
+            "learning_goals_in_error_by_ai_detection_response"
         ]
 
     return add_error_learning_goal_by_ai_detection
@@ -176,15 +171,15 @@ def add_error_learning_goal_by_user_fix_detection(
             matched_goals = []
             for learning_goal in learning_goals:
                 if learning_goal.found_in_error(
-                    error_name=row[ExecutionErrorCols.ERROR_NAME.value],
-                    traceback=row[ExecutionErrorCols.TRACEBACK.value],
-                    code=row[FileVersionsCols.CODE.value],
+                    error_name=row["error_name"],
+                    traceback=row["traceback"],
+                    code=row["code"],
                 ):
                     matched_goals.append(learning_goal)
             return matched_goals
 
-        execution_errors_df[
-            ExecutionErrorCols.LEARNING_GOALS_IN_ERROR_BY_ERROR_PATTERN_DETECTION.value
-        ] = merged.apply(detect_learning_goals, axis=1)
+        execution_errors_df["learning_goals_in_error_by_error_pattern_detection"] = (
+            merged.apply(detect_learning_goals, axis=1)
+        )
 
-    return add_error_learning_goal_by_error_pattern_detection
+    return add_error_learning_goal_by_user_fix_detection
