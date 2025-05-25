@@ -9,7 +9,6 @@ from executions.execution_analyser import (
     add_execution_overview_df,
     add_execution_success,
     add_file_version_id,
-    add_id_of_previous_executed_file_version,
     add_surrounding_executions,
 )
 from executions.execution_error_analyser import (
@@ -17,10 +16,8 @@ from executions.execution_error_analyser import (
     add_error_learning_goal_by_error_pattern_detection,
 )
 from executions.execution_success_analyser import (
-    add_constructs_of_added_code,
     add_execution_successes_df,
-    add_learning_goals_of_added_code,
-    add_line_numbers_of_new_code
+    add_new_code_analysis,
 )
 from interactions.interaction_analyser import (
     add_active_file,
@@ -73,13 +70,10 @@ def run_jupyter_data_pipeline():
         # executions
         add_execution_success,
         add_file_version_id,
-        add_id_of_previous_executed_file_version,
         add_surrounding_executions,
         # execution_success
         add_execution_successes_df,
-        add_line_numbers_of_new_code,
-        add_constructs_of_added_code,
-        add_learning_goals_of_added_code(learning_goals),
+        add_new_code_analysis(learning_goals),
         # execution_errors
         add_error_learning_goal_by_error_pattern_detection(learning_goals),
         add_error_learning_goal_by_ai_detection(learning_goals),

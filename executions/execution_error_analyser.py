@@ -4,6 +4,11 @@ import pandas as pd
 
 import chatbot
 from enums import LearningGoal
+from executions.execution_utils import (
+    detect_learning_goals,
+    get_ast_nodes_for_lines,
+    get_line_numbers_of_added_code,
+)
 
 
 def add_error_learning_goal_by_error_pattern_detection(
@@ -20,14 +25,14 @@ def add_error_learning_goal_by_error_pattern_detection(
         executions_df = data["executions"]
         file_versions_df = data["file_versions"]
 
-        # Merge execution_errors with executions on execution_id
+        # Merge executions to get the file_version_id
         merged = execution_errors_df.merge(
             executions_df[["id", "file_version_id"]],
             left_on="execution_id",
             right_on="id",
             how="left",
         )
-        # Merge with file_versions to get the code and file
+        # Merge file_versions to get the code and file
         merged = merged.merge(
             file_versions_df.rename(columns={"id": "file_version_id"})[
                 [
@@ -36,7 +41,7 @@ def add_error_learning_goal_by_error_pattern_detection(
                     "code",
                 ]
             ],
-            left_on="id",
+            left_on="file_version_id",
             right_on="file_version_id",
             how="left",
         )
@@ -92,11 +97,9 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
             error_value = row["error_value"]
             traceback = row["traceback"]
             return (
-                "You are an instructor tasked with analyzing a programming mistake.\n"
-                "Your goal is to determine which learning goals are relevant to the error message. You will be provided with the error message, the corresponding code, and a list of learning goals—each with a name and a brief explanation.\n"
-                "Please reason step-by-step to arrive at your conclusion\n"
-                "On the last line of your response, write your final classification in exactly this format:\n"
-                "'The learning goals are [list of names of learning goals]'.\n\n"
+                "Let's work this out in a step by step way to be sure we have the right answer.\n"
+                "What learning goals failed for the following error?\n"
+                "Format final line as: The learning goals are : [list of name of learning goals]\n\n"
                 f"Learning goals:\n{learning_goals_string}\n\n"
                 f"Student code:\n'''\n{code}\n'''\n"
                 f"Error message:\n'''\n{error_value}\n{traceback}\n'''\n"
@@ -120,66 +123,97 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
             extract_fn=extract_fn,
             max_retries=3,
         )
-        execution_errors_df[
+        execution_errors_df["learning_goals_in_error_by_ai_detection"] = merged[
             "learning_goals_in_error_by_ai_detection"
-        ] = merged["learning_goals_in_error_by_ai_detection"]
-        execution_errors_df[
-            "learning_goals_in_error_by_ai_detection_prompt"
-        ] = merged[
+        ]
+        execution_errors_df["learning_goals_in_error_by_ai_detection_prompt"] = merged[
             "learning_goals_in_error_by_ai_detection_prompt"
         ]
-        execution_errors_df[
-            "learning_goals_in_error_by_ai_detection_response"
-        ] = merged[
-            "learning_goals_in_error_by_ai_detection_response"
-        ]
+        execution_errors_df["learning_goals_in_error_by_ai_detection_response"] = (
+            merged["learning_goals_in_error_by_ai_detection_response"]
+        )
 
     return add_error_learning_goal_by_ai_detection
 
-
-def add_error_learning_goal_by_user_fix_detection(
-    learning_goals: list[LearningGoal],
-):
-    def add_error_learning_goal_by_user_fix_detection(
-        data: Dict[str, pd.DataFrame],
-    ) -> None:
+# TODO instead of looking at full lines, check exactly which parts of line
+def add_user_fix_analysis(learning_goals: list[LearningGoal]):
+    def add_user_fix_analysis(data: Dict[str, pd.DataFrame]) -> None:
         """
-        For each execution error, check for each learning goal if it is applied in the code that caused the error.
+        For each execution error, compute:
+            - line numbers of code changed in the next successful execution
+            - AST constructs of the changed code
+            - Learning goals applied in the changed code
         """
-
+        file_versions_df = data["file_versions"]
         execution_errors_df = data["execution_errors"]
         executions_df = data["executions"]
-        file_versions_df = data["file_versions"]
 
-        # Make table
+        # Merge execution_errors with executions
         merged = execution_errors_df.merge(
-            executions_df[["id", "file_version_id"]],
+            executions_df[
+                [
+                    "id",
+                    "file_version_id",
+                    "next_success_file_version_id",
+                ]
+            ],
             left_on="execution_id",
             right_on="id",
             how="left",
         )
+        # Merge with file_versions to get code for current file version
         merged = merged.merge(
-            file_versions_df.rename(columns={"id": "file_version_id"})[
-                ["file_version_id", "file", "code"]
-            ],
-            on="file_version_id",
+            file_versions_df[["id", "code"]],
+            left_on="file_version_id",
+            right_on="id",
             how="left",
+            suffixes=("", "_file_version"),
+        )
+        # Merge with file_versions again to get next code
+        merged = merged.merge(
+            file_versions_df[["id", "code"]],
+            left_on="next_success_file_version_id",
+            right_on="id",
+            how="left",
+            suffixes=("", "_next_version"),
         )
 
-        # Check for each learning goal if it is applied in the code that caused the error
-        def detect_learning_goals(row):
-            matched_goals = []
-            for learning_goal in learning_goals:
-                if learning_goal.found_in_error(
-                    error_name=row["error_name"],
-                    traceback=row["traceback"],
-                    code=row["code"],
-                ):
-                    matched_goals.append(learning_goal)
-            return matched_goals
+        merged["code_next_version"] = merged["code_next_version"].fillna("")
 
-        execution_errors_df["learning_goals_in_error_by_error_pattern_detection"] = (
-            merged.apply(detect_learning_goals, axis=1)
+        def compute_changed_line_numbers(row):
+            code_next_version = row["code_next_version"]
+            code_current = row["code"]
+            return get_line_numbers_of_added_code(code_current, code_next_version)
+
+        def compute_changed_constructs(row):
+            code_next_version = row["code_next_version"] or ""
+            lines = row["changed_line_numbers_next_success"]
+            return get_ast_nodes_for_lines(code_next_version, lines)
+
+        def compute_learning_goals_of_changed_code(row):
+            constructs = row["changed_constructs_next_success"]
+            return detect_learning_goals(constructs, learning_goals)
+
+        # Compute all columns in sequence with new names
+        merged["changed_line_numbers_next_success"] = merged.apply(
+            compute_changed_line_numbers, axis=1
         )
+        execution_errors_df["changed_line_numbers_next_success"] = merged[
+            "changed_line_numbers_next_success"
+        ]
+        merged["changed_constructs_next_success"] = merged.apply(
+            compute_changed_constructs, axis=1
+        ).astype(object)
+        execution_errors_df["changed_constructs_next_success"] = merged[
+            "changed_constructs_next_success"
+        ]
+        merged["learning_goals_of_changed_code_next_success"] = merged.apply(
+            compute_learning_goals_of_changed_code, axis=1
+        )
+        execution_errors_df["learning_goals_of_changed_code_next_success"] = merged[
+            "learning_goals_of_changed_code_next_success"
+        ]
 
-    return add_error_learning_goal_by_user_fix_detection
+        data["execution_errors"] = execution_errors_df
+
+    return add_user_fix_analysis

@@ -76,9 +76,9 @@ def write_to_excel(file_path: str):
                             else str(x)
                         )
                     )
-                    worksheet.write_column(1, col_index, df[col])
+                    worksheet.write_column(1, col_index, df[col].where(pd.notnull(df[col]), ""))
                 else:
-                    worksheet.write_column(1, col_index, df[col])
+                    worksheet.write_column(1, col_index, df[col].where(pd.notnull(df[col]), ""))
 
             # Format sheet as table
             (max_row, max_col) = df.shape

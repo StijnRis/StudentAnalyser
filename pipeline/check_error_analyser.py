@@ -5,20 +5,19 @@ import pandas as pd
 
 from enums import get_learning_goals, get_question_purposes, get_question_types
 from executions.execution_analyser import (
+    add_execution_overview_df,
     add_execution_success,
     add_file_version_id,
-    add_id_of_previous_executed_file_version,
     add_surrounding_executions,
 )
 from executions.execution_error_analyser import (
     add_error_learning_goal_by_ai_detection,
     add_error_learning_goal_by_error_pattern_detection,
+    add_user_fix_analysis,
 )
 from executions.execution_success_analyser import (
-    add_constructs_of_added_code,
     add_execution_successes_df,
-    add_learning_goals_of_added_code,
-    add_line_numbers_of_new_code,
+    add_new_code_analysis,
 )
 from loader.jupyter_log import load_jupyter_log
 from pipeline.pipeline import run_pipeline
@@ -48,16 +47,16 @@ def run_check_error_analyser_pipeline():
         # executions
         add_execution_success,
         add_file_version_id,
-        add_id_of_previous_executed_file_version,
         add_surrounding_executions,
         # execution_success
-        # add_execution_successes_df,
-        # add_line_numbers_of_new_code,
-        # add_constructs_of_added_code,
-        # add_learning_goals_of_added_code(learning_goals),
-        # # execution_errors
-        # add_error_learning_goal_by_error_pattern_detection(learning_goals),
+        add_execution_successes_df,
+        add_new_code_analysis(learning_goals),
+        # execution_errors
+        add_error_learning_goal_by_error_pattern_detection(learning_goals),
+        add_user_fix_analysis(learning_goals),
         # add_error_learning_goal_by_ai_detection(learning_goals),
+        # Overview
+        add_execution_overview_df,
         # Save to Excel
         write_to_excel(f"{OUTPUT_DIR}/check_error_analyser.xlsx"),
     ]
