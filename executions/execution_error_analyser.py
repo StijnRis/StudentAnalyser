@@ -6,8 +6,8 @@ import chatbot
 from enums import LearningGoal
 from executions.execution_utils import (
     detect_learning_goals,
-    get_ast_nodes_for_lines,
-    get_line_numbers_of_added_code,
+    get_ast_nodes_for_ranges,
+    get_ranges_of_changed_code,
 )
 
 
@@ -135,6 +135,7 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
 
     return add_error_learning_goal_by_ai_detection
 
+
 # TODO instead of looking at full lines, check exactly which parts of line
 def add_user_fix_analysis(learning_goals: list[LearningGoal]):
     def add_user_fix_analysis(data: Dict[str, pd.DataFrame]) -> None:
@@ -180,26 +181,26 @@ def add_user_fix_analysis(learning_goals: list[LearningGoal]):
 
         merged["code_next_version"] = merged["code_next_version"].fillna("")
 
-        def compute_changed_line_numbers(row):
+        def compute_ranges_of_changed_code(row):
             code_next_version = row["code_next_version"]
             code_current = row["code"]
-            return get_line_numbers_of_added_code(code_current, code_next_version)
+            return get_ranges_of_changed_code(code_current, code_next_version)
 
         def compute_changed_constructs(row):
             code_next_version = row["code_next_version"] or ""
-            lines = row["changed_line_numbers_next_success"]
-            return get_ast_nodes_for_lines(code_next_version, lines)
+            ranges = row["ranges_of_changed_code_next_success"]
+            return get_ast_nodes_for_ranges(code_next_version, ranges)
 
         def compute_learning_goals_of_changed_code(row):
             constructs = row["changed_constructs_next_success"]
             return detect_learning_goals(constructs, learning_goals)
 
         # Compute all columns in sequence with new names
-        merged["changed_line_numbers_next_success"] = merged.apply(
-            compute_changed_line_numbers, axis=1
+        merged["ranges_of_changed_code_next_success"] = merged.apply(
+            compute_ranges_of_changed_code, axis=1
         )
-        execution_errors_df["changed_line_numbers_next_success"] = merged[
-            "changed_line_numbers_next_success"
+        execution_errors_df["ranges_of_changed_code_next_success"] = merged[
+            "ranges_of_changed_code_next_success"
         ]
         merged["changed_constructs_next_success"] = merged.apply(
             compute_changed_constructs, axis=1
@@ -207,11 +208,11 @@ def add_user_fix_analysis(learning_goals: list[LearningGoal]):
         execution_errors_df["changed_constructs_next_success"] = merged[
             "changed_constructs_next_success"
         ]
-        merged["learning_goals_of_changed_code_next_success"] = merged.apply(
+        merged["learning_goals_in_error_by_user_fix"] = merged.apply(
             compute_learning_goals_of_changed_code, axis=1
         )
-        execution_errors_df["learning_goals_of_changed_code_next_success"] = merged[
-            "learning_goals_of_changed_code_next_success"
+        execution_errors_df["learning_goals_in_error_by_user_fix"] = merged[
+            "learning_goals_in_error_by_user_fix"
         ]
 
         data["execution_errors"] = execution_errors_df

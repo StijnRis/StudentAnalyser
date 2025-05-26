@@ -112,7 +112,9 @@ def add_column_through_chatbot(df, column_name, prompt_fn, extract_fn, max_retri
                 return await ask_with_retries_async(row, session)
 
         tasks = [sem_task(row, session) for row in rows]
-        return await asyncio.gather(*tasks)
+        result = await asyncio.gather(*tasks)
+        await session.close()
+        return result
 
     rows = list(df.to_dict(orient="records"))
     results = asyncio.run(process_all(rows))

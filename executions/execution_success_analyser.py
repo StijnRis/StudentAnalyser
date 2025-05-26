@@ -5,8 +5,8 @@ import pandas as pd
 from enums import LearningGoal
 from executions.execution_utils import (
     detect_learning_goals,
-    get_ast_nodes_for_lines,
-    get_line_numbers_of_added_code,
+    get_ast_nodes_for_ranges,
+    get_ranges_of_changed_code,
 )
 
 
@@ -75,24 +75,22 @@ def add_new_code_analysis(learning_goals: list[LearningGoal]):
                 else ""
             )
             code_current = row["code"]
-            return get_line_numbers_of_added_code(code_previous_version, code_current)
+            return get_ranges_of_changed_code(code_previous_version, code_current)
 
         def compute_added_constructs(row):
             code = row["code"]
-            lines = row["line_numbers_of_new_code"]
-            return get_ast_nodes_for_lines(code, lines)
+            ranges = row["ranges_of_new_code"]
+            return get_ast_nodes_for_ranges(code, ranges)
 
         def compute_learning_goals_of_added_code(row):
             constructs = row["added_constructs"]
             return detect_learning_goals(constructs, learning_goals)
 
         # Compute all columns in sequence
-        merged["line_numbers_of_new_code"] = merged.apply(
+        merged["ranges_of_new_code"] = merged.apply(
             compute_line_numbers_of_new_code, axis=1
         )
-        execution_successes_df["line_numbers_of_new_code"] = merged[
-            "line_numbers_of_new_code"
-        ]
+        execution_successes_df["ranges_of_new_code"] = merged["ranges_of_new_code"]
         merged["added_constructs"] = merged.apply(
             compute_added_constructs, axis=1
         ).astype(object)

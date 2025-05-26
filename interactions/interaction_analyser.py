@@ -199,13 +199,10 @@ def add_interaction_purpose(
             question_body = row["question_body"]
             answer_body = row["answer_body"]
             return (
-                "You are an expert question purpose classifier.\n"
-                "For each incoming user message, follow this procedure:\n"
-                "1. Carefully analyze the message and think through its intent.\n"
-                "2. Compare it against the list of predefined question purposes below.\n"
-                "3. On the final line, deliver the verdict in this format:\n"
-                "   The question is of purpose: [PURPOSE]\n\n"
-                "Here are the available purposes:\n"
+                "Let's work this out in a step by step way to be sure we have the right answer.\n"
+                "What is the question purpose of the following question of a student?\n"
+                "Format final line as: The question is of purpose: [PURPOSE]\n\n"
+                "These are the possible purposes:\n"
                 f"{question_purposes_explanation}\n"
                 f"Classify the following message:\n'''\n{question_body}\n'''\n"
                 f"AI response:\n'''\n{answer_body}\n'''\n"
@@ -270,12 +267,9 @@ def add_interaction_learning_goals(
             question_body = row["question_body"]
             answer_body = row["answer_body"]
             return (
-                "You are an expert question learning goal classifier.\n"
-                "For each incoming user message, follow this procedure:\n"
-                "1. Carefully analyze the message and think through its intent.\n"
-                "2. Compare it against the list of predefined learning goals below.\n"
-                "3. On the final line, deliver the verdict in this format:\n"
-                "   The question is of purpose: [PURPOSE]\n\n"
+                "Let's work this out in a step by step way to be sure we have the right answer.\n"
+                "About which learning goal is the following question of a student?\n"
+                "Format final line as: The question has learning goals: [learning goals]\n\n"
                 f"Available learning goals:\n{learning_goal_explanations}\n"
                 f"Classify the following message:\n'''\n{question_body}\n'''\n"
                 f"AI response:\n'''\n{answer_body}\n'''\n"

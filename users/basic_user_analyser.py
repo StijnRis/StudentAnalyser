@@ -113,7 +113,7 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
                 user_error = error_merged[
                     (error_merged["username"] == user)
                     & (
-                        error_merged["learning_goals_in_error_by_ai_detection"].apply(
+                        error_merged["learning_goals_in_error_by_user_fix"].apply(
                             lambda goals: (goal in goals)
                         )
                     )
@@ -162,3 +162,52 @@ def add_average_learning_goals_success(learning_goals: list[LearningGoal]):
         data["users"] = users_df
 
     return add_average_learning_goals_success
+
+
+def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
+    def add_bkt(data: Dict[str, pd.DataFrame]) -> None:
+        """
+        For each user and each learning goal, apply Bayesian Knowledge Tracing (BKT) to their result series.
+        Adds a new column for each learning goal with a DataFrame of (datetime, p_known).
+        """
+        users_df = data["users"]
+
+        # BKT parameters (can be tuned)
+        p_init = 0.2
+        p_learn = 0.2
+        p_guess = 0.2
+        p_slip = 0.1
+
+        for goal in learning_goals:
+            col_name = f"{goal.name} series"
+            bkt_col = f"{goal.name} BKT"
+
+            def bkt_trace(result_df):
+                p_know = p_init
+                index = []
+                values = []
+                for _, row in result_df.iterrows():
+                    correct = row["result"]
+                    dt = row["datetime"]
+                    if correct:
+                        num = p_know * (1 - p_slip)
+                        denom = num + (1 - p_know) * p_guess
+                    else:
+                        num = p_know * p_slip
+                        denom = num + (1 - p_know) * (1 - p_guess)
+                    if denom == 0:
+                        p_know_given_obs = p_know
+                    else:
+                        p_know_given_obs = num / denom
+                    p_know = p_know_given_obs + (1 - p_know_given_obs) * p_learn
+                    index.append(dt)
+                    values.append(p_know)
+
+                return pd.DataFrame({"datetime": index, "p_known": values})
+
+            users_df[bkt_col] = users_df[col_name].map(bkt_trace)
+            users_df[bkt_col] = users_df[bkt_col].astype(object)
+
+        data["users"] = users_df
+
+    return add_bkt

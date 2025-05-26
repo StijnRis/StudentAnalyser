@@ -14,6 +14,7 @@ from executions.execution_analyser import (
 from executions.execution_error_analyser import (
     add_error_learning_goal_by_ai_detection,
     add_error_learning_goal_by_error_pattern_detection,
+    add_user_fix_analysis,
 )
 from executions.execution_success_analyser import (
     add_execution_successes_df,
@@ -41,6 +42,7 @@ from pipeline.pipeline import run_pipeline
 from users.basic_user_analyser import (
     add_average_learning_goals_success,
     add_basic_statistics_to_users,
+    add_bayesian_knowledge_tracing,
     add_learning_goals_result_series,
     add_users_dataframe,
 )
@@ -76,7 +78,8 @@ def run_jupyter_data_pipeline():
         add_new_code_analysis(learning_goals),
         # execution_errors
         add_error_learning_goal_by_error_pattern_detection(learning_goals),
-        add_error_learning_goal_by_ai_detection(learning_goals),
+        # add_error_learning_goal_by_ai_detection(learning_goals),
+        add_user_fix_analysis(learning_goals),
         # Edits
         # messages
         load_chat_log(VOLUMES_DATA_LOCATION.split(","), FILTER_USERNAME),
@@ -96,6 +99,7 @@ def run_jupyter_data_pipeline():
         add_basic_statistics_to_users,
         add_learning_goals_result_series(learning_goals),
         add_average_learning_goals_success(learning_goals),
+        add_bayesian_knowledge_tracing(learning_goals),
         # Interactions part 2
         add_increase_in_success_rate,
         # overview

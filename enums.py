@@ -1,4 +1,5 @@
 import ast
+import re
 from typing import Callable, List
 
 
@@ -14,7 +15,7 @@ class LearningGoal:
         self.description = description
         self.is_applied_lambda = is_applied
         self.found_in_error_lambda = found_in_error
-    
+
     def is_applied(self, node: ast.AST) -> bool:
         return self.is_applied_lambda(node)
 
@@ -120,9 +121,38 @@ def get_learning_goals() -> List[LearningGoal]:
             ),
         ),
         LearningGoal(
+            "Input statement",
+            "Using the input function.",
+            lambda node: (
+                isinstance(node, ast.Call)
+                and isinstance(getattr(node, "func", None), ast.Name)
+                and getattr(node.func, "id", None) == "input"
+            ),
+            lambda error_name, traceback, code: (
+                "input" in traceback.lower() or "input" in code.lower()
+            ),
+        ),
+        LearningGoal(
             "Variable assignment",
             "Assigning values to variables.",
             lambda node: isinstance(node, (ast.Assign, ast.AugAssign)),
+            lambda error_name, traceback, code: (
+                "syntaxerror" in error_name.lower()
+                and (
+                    "cannot assign" in traceback.lower()
+                    or "assignment" in traceback.lower()
+                    or "can't assign" in traceback.lower()
+                )
+            ),
+        ),
+        LearningGoal(
+            "Variable usage",
+            "Using variables in expressions or statements.",
+            lambda node: (
+                isinstance(node, ast.Name)
+                and isinstance(getattr(node, "ctx", None), ast.Load)
+                and not isinstance(getattr(node, "ctx", None), (ast.Store, ast.Del))
+            ),
             lambda error_name, traceback, code: (
                 "nameerror" in error_name.lower() and "not defined" in traceback.lower()
             ),
@@ -138,7 +168,8 @@ def get_learning_goals() -> List[LearningGoal]:
             "Error with a for loop.",
             lambda node: isinstance(node, ast.For),
             lambda error_name, traceback, code: (
-                "syntaxerror" in error_name.lower() and "for" in traceback.lower()
+                "syntaxerror" in error_name.lower()
+                and bool(re.search(r"\bfor\b", traceback.lower()))
             ),
         ),
         LearningGoal(
@@ -146,7 +177,8 @@ def get_learning_goals() -> List[LearningGoal]:
             "Error with a while loop.",
             lambda node: isinstance(node, ast.While),
             lambda error_name, traceback, code: (
-                "syntaxerror" in error_name.lower() and "while" in traceback.lower()
+                "syntaxerror" in error_name.lower()
+                and bool(re.search(r"\bwhile\b", traceback.lower()))
             ),
         ),
         LearningGoal(
@@ -154,7 +186,8 @@ def get_learning_goals() -> List[LearningGoal]:
             "Error with a break statement.",
             lambda node: isinstance(node, ast.Break),
             lambda error_name, traceback, code: (
-                "syntaxerror" in error_name.lower() and "break" in traceback.lower()
+                "syntaxerror" in error_name.lower()
+                and bool(re.search(r"\bbreak\b", traceback.lower()))
             ),
         ),
         LearningGoal(
@@ -170,7 +203,8 @@ def get_learning_goals() -> List[LearningGoal]:
             "Error with a function definition.",
             lambda node: isinstance(node, ast.FunctionDef),
             lambda error_name, traceback, code: (
-                "syntaxerror" in error_name.lower() and "def" in traceback.lower()
+                "syntaxerror" in error_name.lower()
+                and bool(re.search(r"\bdef\b", traceback.lower()))
             ),
         ),
         LearningGoal(
@@ -178,7 +212,8 @@ def get_learning_goals() -> List[LearningGoal]:
             "Error with an import statement.",
             lambda node: isinstance(node, (ast.Import, ast.ImportFrom)),
             lambda error_name, traceback, code: (
-                "syntaxerror" in error_name.lower() and "import" in traceback.lower()
+                "syntaxerror" in error_name.lower()
+                and bool(re.search(r"\bimport\b", traceback.lower()))
             ),
         ),
         LearningGoal(
