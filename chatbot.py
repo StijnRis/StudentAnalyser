@@ -64,11 +64,17 @@ async def ask_question_without_cache_async(question, session):
         "messages": [{"role": "user", "content": question}],
     }
 
-    async with session.post(url, headers=headers, json=data) as response:
-        if response.status != 200:
-            text = await response.text()
-            raise ValueError(f"Error: {response.status} - {text}")
-        result = await response.json()
+    timeout = aiohttp.ClientTimeout(total=300)
+    try:
+        async with session.post(url, headers=headers, json=data, timeout=timeout) as response:
+            if response.status != 200:
+                text = await response.text()
+                raise ValueError(f"Error: {response.status} - {text}")
+            result = await response.json()
+    except asyncio.TimeoutError:
+        print("Request timed out, retrying...")
+        await asyncio.sleep(60)
+        return await ask_question_without_cache_async(question, session)
     response_text = result["choices"][0]["message"]["content"]
 
     end_time = asyncio.get_event_loop().time()
