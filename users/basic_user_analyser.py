@@ -191,10 +191,10 @@ def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
                     dt = row["datetime"]
                     if correct:
                         num = p_know * (1 - p_slip)
-                        denom = num + (1 - p_know) * p_guess
+                        denom = p_know * (1 - p_slip) + (1 - p_know) * p_guess
                     else:
                         num = p_know * p_slip
-                        denom = num + (1 - p_know) * (1 - p_guess)
+                        denom = p_know * p_slip + (1 - p_know) * (1 - p_guess)
                     if denom == 0:
                         p_know_given_obs = p_know
                     else:
