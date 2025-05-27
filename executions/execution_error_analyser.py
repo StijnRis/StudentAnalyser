@@ -119,8 +119,8 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
         merged = chatbot.add_column_through_chatbot(
             merged,
             column_name="learning_goals_in_error_by_ai_detection",
-            prompt_fn=prompt_fn,
-            extract_fn=extract_fn,
+            generate_prompt_fn=prompt_fn,
+            extract_data_fn=extract_fn,
             max_retries=3,
         )
         execution_errors_df["learning_goals_in_error_by_ai_detection"] = merged[

@@ -149,8 +149,9 @@ def add_interaction_type(
         merged = chatbot.add_column_through_chatbot(
             merged,
             column_name="question_type",
-            prompt_fn=prompt_fn,
-            extract_fn=extract_fn,
+            generate_prompt_fn=prompt_fn,
+            extract_data_fn=extract_fn,
+            default_value=None,
             max_retries=3,
         )
 
@@ -220,8 +221,9 @@ def add_interaction_purpose(
         merged = chatbot.add_column_through_chatbot(
             merged,
             column_name="question_purpose",
-            prompt_fn=prompt_fn,
-            extract_fn=extract_fn,
+            generate_prompt_fn=prompt_fn,
+            extract_data_fn=extract_fn,
+            default_value=None,
             max_retries=3,
         )
 
@@ -287,8 +289,9 @@ def add_interaction_learning_goals(
         merged = chatbot.add_column_through_chatbot(
             merged,
             column_name="question_learning_goals",
-            prompt_fn=prompt_fn,
-            extract_fn=extract_fn,
+            generate_prompt_fn=prompt_fn,
+            extract_data_fn=extract_fn,
+            default_value=None,
             max_retries=3,
         )
 
