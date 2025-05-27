@@ -291,7 +291,7 @@ def add_interaction_learning_goals(
             column_name="question_learning_goals",
             generate_prompt_fn=prompt_fn,
             extract_data_fn=extract_fn,
-            default_value=None,
+            default_value=[],
             max_retries=3,
         )
 
