@@ -91,7 +91,9 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
         )
         # Merge execution_errors with executions to get username, datetime, learning_goal_in_error_ai
         error_merged = execution_errors_df.merge(
-            executions_df[["id", "username", "datetime"]],
+            executions_df[
+                ["id", "username", "datetime", "is_previous_execution_success"]
+            ],
             left_on="execution_id",
             right_on="id",
             how="left",
@@ -110,8 +112,10 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
                         )
                     )
                 ]
+                # Filter errors where the user has successfully executed before
                 user_error = error_merged[
                     (error_merged["username"] == user)
+                    & (error_merged["is_previous_execution_success"] == True)
                     & (
                         error_merged["learning_goals_in_error_by_user_fix"].apply(
                             lambda goals: (goal in goals)
@@ -145,6 +149,7 @@ def add_average_learning_goals_success(learning_goals: list[LearningGoal]):
         """
 
         users_df = data["users"]
+
         for goal in learning_goals:
             col_name = f"{goal.name} average success"
 
@@ -159,6 +164,7 @@ def add_average_learning_goals_success(learning_goals: list[LearningGoal]):
             # Find the column with the result series for this goal
             result_col = f"{goal.name} series"
             users_df[col_name] = users_df[result_col].apply(compute_average)
+
         data["users"] = users_df
 
     return add_average_learning_goals_success
@@ -205,9 +211,39 @@ def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
 
                 return pd.DataFrame({"datetime": index, "p_known": values})
 
-            users_df[bkt_col] = users_df[col_name].map(bkt_trace)
-            users_df[bkt_col] = users_df[bkt_col].astype(object)
+            users_df[bkt_col] = users_df[col_name].map(bkt_trace).astype(object)
+            users_df[bkt_col] = users_df[bkt_col]
 
         data["users"] = users_df
 
     return add_bkt
+
+
+def add_moving_average(learning_goals: list[LearningGoal], window_size: int):
+    def add_moving_average(data: Dict[str, pd.DataFrame]) -> None:
+        """
+        For each user and each learning goal, compute the moving average of the series
+        """
+        users_df = data["users"]
+
+        for goal in learning_goals:
+            series_col = f"{goal.name} series"
+            moving_avg_col = f"{goal.name} moving average"
+
+            def compute_moving_average(series_df):
+                if series_df.empty:
+                    return pd.DataFrame(columns=["datetime", "moving_average"])
+                result_df = series_df.copy()
+                result_df["moving_average"] = (
+                    result_df["result"]
+                    .rolling(window=window_size, min_periods=1)
+                    .mean()
+                )
+                return result_df[["datetime", "moving_average"]]
+
+            users_df[moving_avg_col] = users_df[series_col].map(compute_moving_average)
+            users_df[moving_avg_col] = users_df[moving_avg_col].astype(object)
+
+        data["users"] = users_df
+
+    return add_moving_average

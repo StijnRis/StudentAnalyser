@@ -39,11 +39,12 @@ from messages.message_analyser import (
     add_message_length,
 )
 from pipeline.pipeline import run_pipeline
-from users.basic_user_analyser import (
+from users.user_analyser import (
     add_average_learning_goals_success,
     add_basic_statistics_to_users,
     add_bayesian_knowledge_tracing,
     add_learning_goals_result_series,
+    add_moving_average,
     add_users_dataframe,
 )
 from writer.excel import write_to_excel
@@ -100,6 +101,7 @@ def run_jupyter_data_pipeline():
         add_learning_goals_result_series(learning_goals),
         add_average_learning_goals_success(learning_goals),
         add_bayesian_knowledge_tracing(learning_goals),
+        add_moving_average(learning_goals, window_size=20),
         # Interactions part 2
         add_increase_in_success_rate,
         # overview

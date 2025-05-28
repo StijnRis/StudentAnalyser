@@ -70,10 +70,15 @@ def write_to_excel(file_path: str):
                             else str(x)
                         )
                     )
+                    # Add an empty line at the start of each cell
                     worksheet.write_column(
-                        1, col_index, df[col].where(pd.notnull(df[col]), "")
+                        1,
+                        col_index,
+                        df[col]
+                        .where(pd.notnull(df[col]), "")
+                        .apply(lambda x: " " * 100 + f"\n{x}"),
                     )
-                if (
+                elif (
                     df[col]
                     .apply(
                         lambda x: isinstance(x, pd.DataFrame)
@@ -101,7 +106,7 @@ def write_to_excel(file_path: str):
                             worksheet_x.write(
                                 row + 1, c, (dt - min_x) / (max_x - min_x) * 100.000
                             )
-                            worksheet_y.write(row + 1, c, 1 if val else -1)
+                            worksheet_y.write(row + 1, c, val)
                         end_column = xl_col_to_name(len(ts_df.iloc[:, 0]))
                         worksheet.add_sparkline(
                             row + 1,
@@ -109,7 +114,7 @@ def write_to_excel(file_path: str):
                             {
                                 "range": f"'{worksheet_y.name}'!$A${row + 2}:${end_column}${row + 2}",
                                 "date_axis": f"'{worksheet_x.name}'!$A${row + 2}:${end_column}${row + 2}",
-                                "type": "line"
+                                "type": "line",
                             },
                         )
                     worksheet.set_column(col_index, col_index, 20)
@@ -121,7 +126,11 @@ def write_to_excel(file_path: str):
                         )
                     )
                     worksheet.write_column(
-                        1, col_index, df[col].where(pd.notnull(df[col]), "")
+                        1,
+                        col_index,
+                        df[col]
+                        .where(pd.notnull(df[col]), "")
+                        .apply(lambda x: " " * 100 + f"\n{x}"),
                     )
                 elif pd.api.types.is_datetime64_any_dtype(df[col]):
                     date_format = workbook.add_format(
@@ -168,5 +177,6 @@ def write_to_excel(file_path: str):
             except Exception as e:
                 print(f"Error closing workbook: {e}")
                 input("Press Enter to retry...")
+        print(f"Data successfully written to {file_path}")
 
     return write_to_excel
