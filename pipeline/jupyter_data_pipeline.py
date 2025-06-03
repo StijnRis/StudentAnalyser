@@ -12,7 +12,6 @@ from executions.execution_analyser import (
     add_surrounding_executions,
 )
 from executions.execution_error_analyser import (
-    add_error_learning_goal_by_ai_detection,
     add_error_learning_goal_by_error_pattern_detection,
     add_user_fix_analysis,
 )
@@ -30,8 +29,7 @@ from interactions.interaction_analyser import (
     add_interactions_df,
     add_waiting_time_to_interactions,
 )
-from loader.chatbot_log import load_chat_log
-from loader.jupyter_log import load_jupyter_log
+from loader.loader_pipeline import generate_loader_pipeline
 from messages.message_analyser import (
     add_code_in_message,
     add_included_code_snippets,
@@ -40,12 +38,11 @@ from messages.message_analyser import (
 )
 from pipeline.pipeline import run_pipeline
 from users.user_analyser import (
-    add_average_learning_goals_success,
+    add_basic_learning_goals_statistics,
     add_basic_statistics_to_users,
     add_bayesian_knowledge_tracing,
     add_learning_goals_result_series,
     add_moving_average,
-    add_users_dataframe,
 )
 from writer.excel import write_to_excel
 
@@ -53,14 +50,12 @@ from writer.excel import write_to_excel
 def run_jupyter_data_pipeline():
 
     # Load all tables into a dictionary
-    VOLUMES_DATA_LOCATION = os.getenv("VOLUMES_DATA_LOCATION")
-    LOGS_DATA_LOCATION = os.getenv("LOGS_DATA_LOCATION")
+    METADATA_FOR_ANALYZER_PATH = os.getenv("METADATA_FOR_ANALYZER_PATH")
+    BASE_DATA_PATH = os.getenv("BASE_DATA_PATH")
     OUTPUT_DIR = os.getenv("OUTPUT_DIR")
-    if not VOLUMES_DATA_LOCATION or not LOGS_DATA_LOCATION or not OUTPUT_DIR:
-        raise ValueError(
-            "VOLUMES_DATA_LOCATION or LOGS_DATA_LOCATION or OUTPUT_DIR not set in .env"
-        )
-    FILTER_USERNAME = os.getenv("FILTER_USERNAME")
+    FILTER_USERNAME = os.getenv("FILTER_USERNAME", None)
+    if not METADATA_FOR_ANALYZER_PATH or not OUTPUT_DIR or not BASE_DATA_PATH:
+        raise ValueError(".env not set up correctly.")
 
     # Get enums
     question_types = get_question_types()
@@ -69,7 +64,9 @@ def run_jupyter_data_pipeline():
 
     # Define your pipeline steps
     pipeline_steps: List[Callable[[Dict[str, pd.DataFrame]], None]] = [
-        load_jupyter_log(LOGS_DATA_LOCATION.split(","), FILTER_USERNAME),
+        *generate_loader_pipeline(
+            BASE_DATA_PATH, METADATA_FOR_ANALYZER_PATH, FILTER_USERNAME
+        ),
         # executions
         add_execution_success,
         add_file_version_id,
@@ -81,9 +78,8 @@ def run_jupyter_data_pipeline():
         add_error_learning_goal_by_error_pattern_detection(learning_goals),
         # add_error_learning_goal_by_ai_detection(learning_goals),
         add_user_fix_analysis(learning_goals),
-        # Edits
+        # edits
         # messages
-        load_chat_log(VOLUMES_DATA_LOCATION.split(","), FILTER_USERNAME),
         add_code_in_message,
         add_message_length,
         add_included_code_snippets,
@@ -96,10 +92,9 @@ def run_jupyter_data_pipeline():
         add_interaction_purpose(question_purposes),
         add_interaction_learning_goals(learning_goals),
         # Users
-        add_users_dataframe,
         add_basic_statistics_to_users,
         add_learning_goals_result_series(learning_goals),
-        add_average_learning_goals_success(learning_goals),
+        add_basic_learning_goals_statistics(learning_goals),
         add_bayesian_knowledge_tracing(learning_goals),
         add_moving_average(learning_goals, window_size=20),
         # Interactions part 2

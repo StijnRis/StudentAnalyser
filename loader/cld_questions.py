@@ -42,7 +42,7 @@ def load_cld_questions(file_path: str, question_types: list[QuestionType]):
         # Create messages DataFrame: user messages
         messages = pd.DataFrame(
             {
-                "id": range(n),
+                "message_id": range(n),
                 "body": df["question"],
                 "sender": "user",
                 "automated": False,
@@ -51,7 +51,7 @@ def load_cld_questions(file_path: str, question_types: list[QuestionType]):
         # Add empty AI responses
         ai_messages = pd.DataFrame(
             {
-                "id": range(n, 2 * n),
+                "message_id": range(n, 2 * n),
                 "body": "",
                 "sender": "ai",
                 "automated": False,
@@ -62,7 +62,7 @@ def load_cld_questions(file_path: str, question_types: list[QuestionType]):
         # Create interactions DataFrame with answer_id
         interactions = pd.DataFrame(
             {
-                "id": range(n),
+                "interaction_id": range(n),
                 "question_id": range(n),
                 "answer_id": range(n, 2 * n),
                 "question_type_by_Thom": df["question_type_by_Thom"],

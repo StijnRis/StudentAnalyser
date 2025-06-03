@@ -27,14 +27,14 @@ def add_error_learning_goal_by_error_pattern_detection(
 
         # Merge executions to get the file_version_id
         merged = execution_errors_df.merge(
-            executions_df[["id", "file_version_id"]],
+            executions_df[["execution_id", "file_version_id"]],
             left_on="execution_id",
-            right_on="id",
+            right_on="execution_id",
             how="left",
         )
         # Merge file_versions to get the code and file
         merged = merged.merge(
-            file_versions_df.rename(columns={"id": "file_version_id"})[
+            file_versions_df[
                 [
                     "file_version_id",
                     "file",
@@ -76,15 +76,13 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
         file_versions_df = data["file_versions"]
 
         merged = execution_errors_df.merge(
-            executions_df[["id", "file_version_id"]],
+            executions_df[["execution_id", "file_version_id"]],
             left_on="execution_id",
-            right_on="id",
+            right_on="execution_id",
             how="left",
         )
         merged = merged.merge(
-            file_versions_df.rename(columns={"id": "file_version_id"})[
-                ["file_version_id", "file", "code"]
-            ],
+            file_versions_df[["file_version_id", "file", "code"]],
             on="file_version_id",
             how="left",
         )
@@ -121,6 +119,7 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
             column_name="learning_goals_in_error_by_ai_detection",
             generate_prompt_fn=prompt_fn,
             extract_data_fn=extract_fn,
+            default_value=[],
             max_retries=3,
         )
         execution_errors_df["learning_goals_in_error_by_ai_detection"] = merged[
@@ -153,28 +152,28 @@ def add_user_fix_analysis(learning_goals: list[LearningGoal]):
         merged = execution_errors_df.merge(
             executions_df[
                 [
-                    "id",
+                    "execution_id",
                     "file_version_id",
                     "next_success_file_version_id",
                 ]
             ],
             left_on="execution_id",
-            right_on="id",
+            right_on="execution_id",
             how="left",
         )
         # Merge with file_versions to get code for current file version
         merged = merged.merge(
-            file_versions_df[["id", "code"]],
+            file_versions_df[["file_version_id", "code"]],
             left_on="file_version_id",
-            right_on="id",
+            right_on="file_version_id",
             how="left",
             suffixes=("", "_file_version"),
         )
         # Merge with file_versions again to get next code
         merged = merged.merge(
-            file_versions_df[["id", "code"]],
+            file_versions_df[["file_version_id", "code"]],
             left_on="next_success_file_version_id",
-            right_on="id",
+            right_on="file_version_id",
             how="left",
             suffixes=("", "_next_version"),
         )

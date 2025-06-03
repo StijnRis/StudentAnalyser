@@ -19,8 +19,8 @@ def add_execution_successes_df(data: Dict[str, pd.DataFrame]) -> None:
     successes = executions_df[executions_df["success"] == True]
     execution_successes_df = pd.DataFrame(
         {
-            "id": successes.index,
-            "execution_id": successes["id"],
+            "success_id": successes.index,
+            "execution_id": successes["execution_id"],
         }
     ).reset_index(drop=True)
     data["execution_successes"] = execution_successes_df
@@ -42,28 +42,28 @@ def add_new_code_analysis(learning_goals: list[LearningGoal]):
         merged = execution_successes_df.merge(
             executions_df[
                 [
-                    "id",
+                    "execution_id",
                     "file_version_id",
                     "previous_success_file_version_id",
                 ]
             ],
             left_on="execution_id",
-            right_on="id",
+            right_on="execution_id",
             how="left",
         )
         # Merge with file_versions to get code for current file version
         merged = merged.merge(
-            file_versions_df[["id", "code"]],
+            file_versions_df[["file_version_id", "code"]],
             left_on="file_version_id",
-            right_on="id",
+            right_on="file_version_id",
             how="left",
             suffixes=("", "_file_version"),
         )
         # Merge with file_versions again to get previous code
         merged = merged.merge(
-            file_versions_df[["id", "code"]],
+            file_versions_df[["file_version_id", "code"]],
             left_on="previous_success_file_version_id",
-            right_on="id",
+            right_on="file_version_id",
             how="left",
             suffixes=("", "_previous_version"),
         )

@@ -13,11 +13,11 @@ def add_interactions_df(data: Dict[str, pd.DataFrame]) -> None:
     The resulting DataFrame has columns 'id', 'question_id' and 'answer_id' referring to the original DataFrame indices.
     """
 
-    # Get all messages for each username and create interaction pairs within each user
+    # Get all messages for each user_id and create interaction pairs within each user
     messages = data["messages"]
     interactions = []
-    for username in messages["username"].unique():
-        user_msgs = messages[messages["username"] == username].sort_values("datetime")
+    for user_id in messages["user_id"].unique():
+        user_msgs = messages[messages["user_id"] == user_id].sort_values("datetime")
         for i in range(len(user_msgs) - 1):
             row_q = user_msgs.iloc[i]
             row_a = user_msgs.iloc[i + 1]
@@ -26,14 +26,14 @@ def add_interactions_df(data: Dict[str, pd.DataFrame]) -> None:
             if is_question and is_answer:
                 interactions.append(
                     {
-                        "username": username,
-                        "question_id": row_q["id"],
-                        "answer_id": row_a["id"],
+                        "user_id": user_id,
+                        "question_id": row_q["message_id"],
+                        "answer_id": row_a["message_id"],
                     }
                 )
 
     interactions_df = pd.DataFrame(interactions)
-    interactions_df.insert(0, "id", range(len(interactions_df)))
+    interactions_df.insert(0, "interaction_id", range(len(interactions_df)))
     data["interactions"] = interactions_df
 
 
@@ -47,17 +47,17 @@ def add_waiting_time_to_interactions(data: Dict[str, pd.DataFrame]) -> None:
 
     # Merge interactions with messages to get question datetimes
     merged = interactions.merge(
-        messages[["id", "datetime"]],
+        messages[["message_id", "datetime"]],
         left_on="question_id",
-        right_on="id",
+        right_on="message_id",
         how="left",
         suffixes=("", "_question"),
     ).rename(columns={"datetime": "question_datetime"})
     # Merge again to get answer datetimes
     merged = merged.merge(
-        messages[["id", "datetime"]],
+        messages[["message_id", "datetime"]],
         left_on="answer_id",
-        right_on="id",
+        right_on="message_id",
         how="left",
         suffixes=("", "_answer"),
     ).rename(columns={"datetime": "answer_datetime"})
@@ -87,7 +87,7 @@ def add_active_file(data: Dict[str, pd.DataFrame]) -> None:
     for id, msg in messages.iterrows():
         edits_after = edits[
             (edits["datetime"] > msg["datetime"])
-            & (edits["username"] == msg["username"])
+            & (edits["user_id"] == msg["user_id"])
         ]
         if not edits_after.empty:
             first_edit = edits_after.sort_values("datetime").iloc[0]
@@ -112,9 +112,9 @@ def add_interaction_type(
 
         # Merge to get question body for each interaction
         merged = interactions.merge(
-            messages[["id", "body"]],
+            messages[["message_id", "body"]],
             left_on="question_id",
-            right_on="id",
+            right_on="message_id",
             how="left",
             suffixes=("", "_question"),
         )
@@ -175,16 +175,16 @@ def add_interaction_purpose(
 
         # Merge to get question and answer body for each interaction
         merged = interactions.merge(
-            messages[["id", "body"]],
+            messages[["message_id", "body"]],
             left_on="question_id",
-            right_on="id",
+            right_on="message_id",
             how="left",
             suffixes=("", "_question"),
         ).rename(columns={"body": "question_body"})
         merged = merged.merge(
-            messages[["id", "body"]],
+            messages[["message_id", "body"]],
             left_on="answer_id",
-            right_on="id",
+            right_on="message_id",
             how="left",
             suffixes=("", "_answer"),
         ).rename(columns={"body": "answer_body"})
@@ -247,16 +247,16 @@ def add_interaction_learning_goals(
 
         # Merge to get question and answer body for each interaction
         merged = interactions.merge(
-            messages[["id", "body"]],
+            messages[["message_id", "body"]],
             left_on="question_id",
-            right_on="id",
+            right_on="message_id",
             how="left",
             suffixes=("", "_question"),
         ).rename(columns={"body": "question_body"})
         merged = merged.merge(
-            messages[["id", "body"]],
+            messages[["message_id", "body"]],
             left_on="answer_id",
-            right_on="id",
+            right_on="message_id",
             how="left",
             suffixes=("", "_answer"),
         ).rename(columns={"body": "answer_body"})
@@ -321,7 +321,7 @@ def add_increase_in_success_rate(
     merged = interactions.merge(
         messages,
         left_on="question_id",
-        right_on="id",
+        right_on="message_id",
         how="left",
         suffixes=("", "_question"),
     )
@@ -329,13 +329,13 @@ def add_increase_in_success_rate(
     increases = []
     for id, interaction_row in merged.iterrows():
         # Get relevant data
-        username = interaction_row["username"]
+        user_id = interaction_row["user_id"]
         question_goals = interaction_row["question_learning_goals"]
         datetime = interaction_row["datetime"]
-        user_row = users[users["username"] == username]
+        user_row = users[users["user_id"] == user_id]
         if len(user_row) != 1:
             raise ValueError(
-                f"User {username} not found or multiple rows found in users DataFrame."
+                f"User {user_id} not found or multiple rows found in users DataFrame."
             )
         user_row = user_row.iloc[0]
 
@@ -390,7 +390,7 @@ def add_interaction_overview_df(data: Dict[str, pd.DataFrame]) -> None:
     overview_df = overview_df.merge(
         data["messages"],
         left_on="question_id",
-        right_on="id",
+        right_on="message_id",
         how="left",
         suffixes=(None, f"_question"),
     )
@@ -398,7 +398,7 @@ def add_interaction_overview_df(data: Dict[str, pd.DataFrame]) -> None:
     overview_df = overview_df.merge(
         data["messages"],
         left_on="answer_id",
-        right_on="id",
+        right_on="message_id",
         how="left",
         suffixes=(None, f"_answer"),
     )

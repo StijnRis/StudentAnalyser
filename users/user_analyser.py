@@ -3,26 +3,7 @@ from typing import Dict
 import pandas as pd
 
 from interactions.interaction_analyser import LearningGoal
-
-
-def add_users_dataframe(data: Dict[str, pd.DataFrame]) -> None:
-    """
-    Add a DataFrame containing user data to the main data dictionary.
-    Each row corresponds to a user found in either the edits or messages DataFrame,
-    and includes the number of messages and edits related to that user.
-    """
-
-    edits = data["edits"]
-
-    # Get all unique usernames from both DataFrames
-    usernames = set(edits["username"].unique())
-
-    user_rows = []
-    for user in usernames:
-        user_rows.append({"username": user})
-
-    users_df = pd.DataFrame(user_rows)
-    data["users"] = users_df
+from scipy.stats import linregress
 
 
 def add_basic_statistics_to_users(data: Dict[str, pd.DataFrame]) -> None:
@@ -37,32 +18,31 @@ def add_basic_statistics_to_users(data: Dict[str, pd.DataFrame]) -> None:
     interactions_df = data["interactions"]
 
     users_df["num_edits"] = (
-        users_df["username"]
-        .map(edits_df["username"].value_counts())
+        users_df["user_id"]
+        .map(edits_df["user_id"].value_counts())
         .fillna(0)
         .astype(int)
     )
 
     users_df["num_executions"] = (
-        users_df["username"]
-        .map(executions_df["username"].value_counts())
+        users_df["user_id"]
+        .map(executions_df["user_id"].value_counts())
         .fillna(0)
         .astype(int)
     )
 
     users_df["num_interactions"] = (
-        users_df["username"]
-        .map(interactions_df["username"].value_counts())
+        users_df["user_id"]
+        .map(interactions_df["user_id"].value_counts())
         .fillna(0)
         .astype(int)
     )
 
-    # Calculate percentage_successful using the 'success' column in executions
-    success_counts = executions_df.groupby("username")["success"].sum()
-    total_counts = executions_df.groupby("username").size()
-    users_df["percentage_successful"] = (
-        users_df["username"].map(success_counts)
-        / users_df["username"].map(total_counts)
+    # Calculate percentage of executions that were successful
+    success_counts = executions_df.groupby("user_id")["success"].sum()
+    total_counts = executions_df.groupby("user_id").size()
+    users_df["execution success rate"] = (
+        users_df["user_id"].map(success_counts) / users_df["user_id"].map(total_counts)
     ).fillna(0)
 
     data["users"] = users_df
@@ -82,20 +62,20 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
         execution_successes_df = data["execution_successes"]
         execution_errors_df = data["execution_errors"]
 
-        # Merge execution_successes with executions to get username, datetime, learning_goals_of_added_code
+        # Merge execution_successes with executions to get user_id, datetime, learning_goals_of_added_code
         success_merged = execution_successes_df.merge(
-            executions_df[["id", "username", "datetime"]],
+            executions_df[["execution_id", "user_id", "datetime"]],
             left_on="execution_id",
-            right_on="id",
+            right_on="execution_id",
             how="left",
         )
-        # Merge execution_errors with executions to get username, datetime, learning_goal_in_error_ai
+        # Merge execution_errors with executions to get user_id, datetime, learning_goal_in_error_ai
         error_merged = execution_errors_df.merge(
             executions_df[
-                ["id", "username", "datetime", "is_previous_execution_success"]
+                ["execution_id", "user_id", "datetime", "is_previous_execution_success"]
             ],
             left_on="execution_id",
-            right_on="id",
+            right_on="execution_id",
             how="left",
         )
 
@@ -105,7 +85,7 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
 
             def build_result_series(user):
                 user_success = success_merged[
-                    (success_merged["username"] == user)
+                    (success_merged["user_id"] == user)
                     & (
                         success_merged["learning_goals_of_added_code"].apply(
                             lambda goals: (goal in goals)
@@ -114,7 +94,7 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
                 ]
                 # Filter errors where the user has successfully executed before
                 user_error = error_merged[
-                    (error_merged["username"] == user)
+                    (error_merged["user_id"] == user)
                     & (error_merged["is_previous_execution_success"] == True)
                     & (
                         error_merged["learning_goals_in_error_by_user_fix"].apply(
@@ -135,23 +115,26 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
                 )
                 return combined
 
-            users_df[col_name] = users_df["username"].map(build_result_series)
+            users_df[col_name] = users_df["user_id"].map(build_result_series)
             users_df[col_name] = users_df[col_name].astype(object)
         data["users"] = users_df
 
     return add_learning_goals_result_series
 
 
-def add_average_learning_goals_success(learning_goals: list[LearningGoal]):
-    def add_average_learning_goals_success(data: Dict[str, pd.DataFrame]) -> None:
+def add_basic_learning_goals_statistics(learning_goals: list[LearningGoal]):
+    def add_basic_learning_goals_statistics(data: Dict[str, pd.DataFrame]) -> None:
         """
-        For each user, for each learning goal, compute the average success rate.
+        For each user, for each learning goal, compute the average success rate and the slope coefficient.
         """
+        import numpy as np
+        from scipy.stats import linregress
 
         users_df = data["users"]
 
         for goal in learning_goals:
             col_name = f"{goal.name} average success"
+            slope_col = f"{goal.name} slope"
 
             def compute_average(user_result_df):
                 num_true = (user_result_df["result"] == True).sum()
@@ -161,13 +144,24 @@ def add_average_learning_goals_success(learning_goals: list[LearningGoal]):
                     return None
                 return num_true / total
 
+            def compute_slope(user_result_df):
+                if user_result_df.empty or len(user_result_df) < 2:
+                    return None
+                x = user_result_df["datetime"].map(lambda dt: dt.timestamp()).values
+                y = user_result_df["result"].astype(float).values
+    
+                slope, intercept, r, p, se = linregress(x, y)
+                return slope
+                
+
             # Find the column with the result series for this goal
             result_col = f"{goal.name} series"
             users_df[col_name] = users_df[result_col].apply(compute_average)
+            users_df[slope_col] = users_df[result_col].apply(compute_slope)
 
         data["users"] = users_df
 
-    return add_average_learning_goals_success
+    return add_basic_learning_goals_statistics
 
 
 def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
@@ -179,10 +173,10 @@ def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
         users_df = data["users"]
 
         # BKT parameters (can be tuned)
-        p_init = 0.2
+        p_init = 0.1
         p_learn = 0.2
         p_guess = 0.2
-        p_slip = 0.1
+        p_slip = 0.2
 
         for goal in learning_goals:
             col_name = f"{goal.name} series"
