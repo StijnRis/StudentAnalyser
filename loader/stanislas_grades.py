@@ -8,7 +8,8 @@ def load_stanislas_grades(
 ):
     def load_stanislas_grades(data: Dict[str, pd.DataFrame]) -> None:
         df = pd.read_csv(log_path)
-        df["grade"] = (df.iloc[:, 1:].sum(axis=1) / max_points + 1) * 10
+        df["total_points"] = df.iloc[:, 1:].sum(axis=1)
+        df["grade"] = df["total_points"] / max_points * 9 + 1
         users = data.get(
             "users", pd.DataFrame(columns=["user_id", "group", "username"])
         )
