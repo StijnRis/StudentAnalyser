@@ -54,10 +54,33 @@ def add_error_learning_goal_by_error_pattern_detection(
                     error_name=row["error_name"],
                     traceback=row["traceback"],
                     code=row["code"],
+                    code_line=row["code_line"],
                 ):
                     matched_goals.append(learning_goal)
             return matched_goals
 
+        # Add code_line column
+        def extract_code_line(row):
+            lines = row["traceback"].strip().splitlines()
+            # Try arrow format first
+            arrow_line = next(
+                (line.strip().lstrip("->").strip() for line in lines if "-->" in line),
+                None,
+            )
+            if arrow_line:
+                return arrow_line
+            # Try Jupyter/Cell format: look for line with caret '^', return previous line
+            for i, line in enumerate(lines):
+                if line.strip().startswith("^") and i > 0:
+                    return lines[i - 1].strip()
+            # Try classic Python format: 'File ... line ...' and return next line
+            for i, line in enumerate(lines):
+                if line.strip().startswith("File") and i + 1 < len(lines):
+                    return lines[i + 1].strip()
+            return ""
+
+        merged["code_line"] = merged.apply(extract_code_line, axis=1)
+        execution_errors_df["code_line"] = merged["code_line"]
         execution_errors_df["learning_goals_in_error_by_error_pattern_detection"] = (
             merged.apply(detect_learning_goals, axis=1)
         )

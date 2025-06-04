@@ -6,8 +6,7 @@ import seaborn as sns
 def plot_violin_plot(dataframe_name, x, y, output_dir):
     def plot_violin_plot(data: dict[str, pd.DataFrame]) -> None:
         """
-        Generate a violin plot mapping each learning goal in question_learning_goals to increase_in_success_rate.
-        Each interaction's increase_in_success_rate is counted for every learning goal in its list.
+        Generate a violin plot between columns x and y from the specified dataframe.
         """
         dataframe = data[dataframe_name]
 

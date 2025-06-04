@@ -3,7 +3,8 @@ from typing import Callable, Dict, List
 
 import pandas as pd
 
-from correlations.correlation_plots import plot_violin_plot
+from correlations.scatter_plot import plot_scatter_plot
+from correlations.violin_plot import plot_violin_plot
 from enums import get_learning_goals, get_question_purposes, get_question_types
 from executions.execution_analyser import (
     add_execution_overview_df,
@@ -54,8 +55,12 @@ def run_jupyter_data_pipeline():
     BASE_DATA_PATH = os.getenv("BASE_DATA_PATH")
     OUTPUT_DIR = os.getenv("OUTPUT_DIR")
     FILTER_USERNAME = os.getenv("FILTER_USERNAME", None)
-    if not METADATA_FOR_ANALYZER_PATH or not OUTPUT_DIR or not BASE_DATA_PATH:
-        raise ValueError(".env not set up correctly.")
+    if not METADATA_FOR_ANALYZER_PATH:
+        raise ValueError(".env misses METADATA_FOR_ANALYZER_PATH")
+    if not BASE_DATA_PATH:
+        raise ValueError(".env misses BASE_DATA_PATH")
+    if not OUTPUT_DIR:
+        raise ValueError(".env misses OUTPUT_DIR")
 
     # Get enums
     question_types = get_question_types()
@@ -115,6 +120,9 @@ def run_jupyter_data_pipeline():
         plot_violin_plot(
             "interactions", "question_type", "increase_in_success_rate", OUTPUT_DIR
         ),
+        plot_scatter_plot("users", "num_interactions", "grade", OUTPUT_DIR),
+        plot_scatter_plot("users", "num_edits", "grade", OUTPUT_DIR),
+        plot_scatter_plot("users", "num_executions", "grade", OUTPUT_DIR),
         # Save to Excel
         write_to_excel(f"{OUTPUT_DIR}/jupyter_data.xlsx"),
     ]

@@ -48,7 +48,11 @@ def write_to_excel(file_path: str):
                             zip(ts_df.iloc[:, 0], ts_df.iloc[:, 1])
                         ):
                             worksheet_x.write(
-                                row + 1, c, (dt - min_x) / (max_x - min_x) * 100.000
+                                row + 1,
+                                c,
+                                (dt - min_x)
+                                / (max_x - min_x + pd.Timedelta(seconds=1e-9))
+                                * 100.000,
                             )
                             worksheet_y.write(row + 1, c, 1 if val else -1)
                         end_column = xl_col_to_name(len(ts_df.iloc[:, 0]))
@@ -104,7 +108,11 @@ def write_to_excel(file_path: str):
                             zip(ts_df.iloc[:, 0], ts_df.iloc[:, 1])
                         ):
                             worksheet_x.write(
-                                row + 1, c, (dt - min_x) / (max_x - min_x) * 100.000
+                                row + 1,
+                                c,
+                                (dt - min_x)
+                                / (max_x - min_x + pd.Timedelta(seconds=1e-9))
+                                * 100.000,
                             )
                             worksheet_y.write(row + 1, c, val)
                         end_column = xl_col_to_name(len(ts_df.iloc[:, 0]))
