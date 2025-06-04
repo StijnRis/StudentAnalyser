@@ -2,13 +2,18 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-
 def plot_scatter_plot(dataframe_name, x, y, output_dir):
     def plot_scatter_plot(data: dict[str, pd.DataFrame]) -> None:
         """
         Generate a scatter plot between columns x and y from the specified dataframe, with a trend line.
         """
         df = data[dataframe_name]
+
+        # Drop rows where x or y is missing or not numeric
+        df = df[[x, y]].copy()
+        df = df.apply(pd.to_numeric, errors="coerce")
+        df = df.dropna()
+
         plt.figure(figsize=(8, 6))
         sns.scatterplot(data=df, x=x, y=y)
         sns.regplot(
