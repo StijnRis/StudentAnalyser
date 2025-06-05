@@ -96,11 +96,11 @@ def get_question_purposes() -> List[QuestionPurpose]:
     return [
         QuestionPurpose(
             "Executive",
-            "The question is about planning, organizing, or managing tasks or activities.",
+            "The students asks the chatbot to complete a task for them.",
         ),
         QuestionPurpose(
             "Instrumental",
-            "The question is about carrying out specific actions, solving problems, or using tools to achieve a goal.",
+            "The students ask for minimal help so they can complete a task themselves.",
         ),
         QuestionPurpose("Not detected", "Unable to detect the question's purpose."),
     ]

@@ -2,9 +2,9 @@ import os
 from typing import Callable, Dict, List
 
 import pandas as pd
+from plots.scatter_plot import plot_scatter_plot
+from plots.violin_plot import plot_violin_plot
 
-from correlations.scatter_plot import plot_scatter_plot
-from correlations.violin_plot import plot_violin_plot
 from enums import get_learning_goals, get_question_purposes, get_question_types
 from executions.execution_analyser import (
     add_execution_overview_df,
@@ -38,9 +38,11 @@ from messages.message_analyser import (
     add_message_length,
 )
 from pipeline.pipeline import run_pipeline
+from users.plot import plot_amount_of_interaction_types_vs_grade
 from users.user_analyser import (
+    add_basic_execution_statistics,
+    add_basic_interaction_statistics,
     add_basic_learning_goals_statistics,
-    add_basic_statistics_to_users,
     add_bayesian_knowledge_tracing,
     add_learning_goals_result_series,
     add_moving_average,
@@ -97,11 +99,13 @@ def run_jupyter_data_pipeline():
         add_interaction_purpose(question_purposes),
         add_interaction_learning_goals(learning_goals),
         # Users
-        add_basic_statistics_to_users,
+        add_basic_execution_statistics,
         add_learning_goals_result_series(learning_goals),
         add_basic_learning_goals_statistics(learning_goals),
         add_bayesian_knowledge_tracing(learning_goals),
         add_moving_average(learning_goals, window_size=20),
+        add_basic_interaction_statistics(question_types),
+        plot_amount_of_interaction_types_vs_grade(OUTPUT_DIR, question_types),
         # Interactions part 2
         add_increase_in_success_rate,
         # overview
@@ -123,6 +127,7 @@ def run_jupyter_data_pipeline():
         plot_scatter_plot("users", "num_interactions", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "num_edits", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "num_executions", "grade", OUTPUT_DIR),
+        plot_scatter_plot("users", "execution_success_rate", "grade", OUTPUT_DIR),
         # Save to Excel
         write_to_excel(f"{OUTPUT_DIR}/jupyter_data.xlsx"),
     ]

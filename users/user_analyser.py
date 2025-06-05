@@ -2,11 +2,11 @@ from typing import Dict
 
 import pandas as pd
 
+from enums import QuestionType
 from interactions.interaction_analyser import LearningGoal
-from scipy.stats import linregress
 
 
-def add_basic_statistics_to_users(data: Dict[str, pd.DataFrame]) -> None:
+def add_basic_execution_statistics(data: Dict[str, pd.DataFrame]) -> None:
     """
     Add basic statistics to the users DataFrame.
     """
@@ -31,17 +31,10 @@ def add_basic_statistics_to_users(data: Dict[str, pd.DataFrame]) -> None:
         .astype(int)
     )
 
-    users_df["num_interactions"] = (
-        users_df["user_id"]
-        .map(interactions_df["user_id"].value_counts())
-        .fillna(0)
-        .astype(int)
-    )
-
     # Calculate percentage of executions that were successful
     success_counts = executions_df.groupby("user_id")["success"].sum()
     total_counts = executions_df.groupby("user_id").size()
-    users_df["execution success rate"] = (
+    users_df["execution_success_rate"] = (
         users_df["user_id"].map(success_counts) / users_df["user_id"].map(total_counts)
     ).fillna(0)
 
@@ -81,7 +74,7 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
 
         # For each user and each learning goal, create a Series of (datetime, result)
         for goal in learning_goals:
-            col_name = f"{goal.name} series"
+            col_name = f"{goal.name}_series"
 
             def build_result_series(user):
                 user_success = success_merged[
@@ -149,13 +142,12 @@ def add_basic_learning_goals_statistics(learning_goals: list[LearningGoal]):
                     return None
                 x = user_result_df["datetime"].map(lambda dt: dt.timestamp()).values
                 y = user_result_df["result"].astype(float).values
-    
+
                 slope, intercept, r, p, se = linregress(x, y)
                 return slope
-                
 
             # Find the column with the result series for this goal
-            result_col = f"{goal.name} series"
+            result_col = f"{goal.name}_series"
             users_df[col_name] = users_df[result_col].apply(compute_average)
             users_df[slope_col] = users_df[result_col].apply(compute_slope)
 
@@ -179,8 +171,8 @@ def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
         p_slip = 0.2
 
         for goal in learning_goals:
-            col_name = f"{goal.name} series"
-            bkt_col = f"{goal.name} BKT"
+            col_name = f"{goal.name}_series"
+            bkt_col = f"{goal.name}_BKT"
 
             def bkt_trace(result_df):
                 p_know = p_init
@@ -221,8 +213,8 @@ def add_moving_average(learning_goals: list[LearningGoal], window_size: int):
         users_df = data["users"]
 
         for goal in learning_goals:
-            series_col = f"{goal.name} series"
-            moving_avg_col = f"{goal.name} moving average"
+            series_col = f"{goal.name}_series"
+            moving_avg_col = f"{goal.name}_moving_average"
 
             def compute_moving_average(series_df):
                 if series_df.empty:
@@ -241,3 +233,31 @@ def add_moving_average(learning_goals: list[LearningGoal], window_size: int):
         data["users"] = users_df
 
     return add_moving_average
+
+
+def add_basic_interaction_statistics(question_types: list[QuestionType]):
+    """
+    Add basic interaction statistics to the users DataFrame.
+    """
+    def add_basic_interaction_statistics(data: Dict[str, pd.DataFrame]):
+        users_df = data["users"]
+        interactions_df = data["interactions"]
+
+        users_df["num_interactions"] = (
+            users_df["user_id"]
+            .map(interactions_df["user_id"].value_counts())
+            .fillna(0)
+            .astype(int)
+        )
+
+        # Add columns for each question_type
+        for qtype in question_types:
+            col_name = f"num_{qtype.name}_questions"
+            counts = interactions_df[interactions_df["question_type"] == qtype][
+                "user_id"
+            ].value_counts()
+            users_df[col_name] = users_df["user_id"].map(counts).fillna(0).astype(int)
+
+        data["users"] = users_df
+    
+    return add_basic_interaction_statistics

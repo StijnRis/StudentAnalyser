@@ -155,9 +155,9 @@ def add_interaction_type(
             max_retries=3,
         )
 
-        interactions["question_type"] = merged["question_type"]
         interactions["question_type_prompt"] = merged["question_type_prompt"]
         interactions["question_type_response"] = merged["question_type_response"]
+        interactions["question_type"] = merged["question_type"]
 
     return add_question_type
 
@@ -343,7 +343,7 @@ def add_increase_in_success_rate(
         before_ratios = []
         after_ratios = []
         for goal in question_goals:
-            column = f"{goal.name} series"
+            column = f"{goal.name}_series"
             learning_goal_time_series = user_row[column]
             before = learning_goal_time_series[
                 learning_goal_time_series["datetime"] < datetime
