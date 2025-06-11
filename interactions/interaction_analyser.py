@@ -80,18 +80,17 @@ def add_active_file(data: Dict[str, pd.DataFrame]) -> None:
     messages = data["messages"]
     edits = data["edits"]
     edits = edits[
-        edits["file"].notnull()
+        edits["filename"].notnull()
     ]  # Skip edits that do not have a file associated
 
     active_files = []
     for id, msg in messages.iterrows():
         edits_after = edits[
-            (edits["datetime"] > msg["datetime"])
-            & (edits["user_id"] == msg["user_id"])
+            (edits["datetime"] > msg["datetime"]) & (edits["user_id"] == msg["user_id"])
         ]
         if not edits_after.empty:
             first_edit = edits_after.sort_values("datetime").iloc[0]
-            active_files.append(first_edit["file"])
+            active_files.append(first_edit["filename"])
         else:
             active_files.append(None)
 
@@ -100,7 +99,7 @@ def add_active_file(data: Dict[str, pd.DataFrame]) -> None:
 
 
 def add_interaction_type(
-    question_types: list[QuestionType],
+    question_types: list[QuestionType], not_detected_type: QuestionType
 ) -> Callable[[Dict[str, pd.DataFrame]], None]:
     def add_question_type(data: Dict[str, pd.DataFrame]) -> None:
         """
@@ -151,7 +150,7 @@ def add_interaction_type(
             column_name="question_type",
             generate_prompt_fn=prompt_fn,
             extract_data_fn=extract_fn,
-            default_value=None,
+            default_value=not_detected_type,
             max_retries=3,
         )
 
@@ -227,9 +226,16 @@ def add_interaction_purpose(
             max_retries=3,
         )
 
-        interactions["question_purpose"] = merged["question_purpose"]
         interactions["question_purpose_prompt"] = merged["question_purpose_prompt"]
         interactions["question_purpose_response"] = merged["question_purpose_response"]
+        interactions["question_purpose_by_ai"] = merged["question_purpose"]
+
+        def get_purpose_from_type(qtype: QuestionType):
+            return qtype.question_purpose
+
+        interactions["question_purpose"] = interactions["question_type"].apply(
+            get_purpose_from_type
+        )
 
     return add_question_purpose
 

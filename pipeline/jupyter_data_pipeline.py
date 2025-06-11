@@ -2,8 +2,6 @@ import os
 from typing import Callable, Dict, List
 
 import pandas as pd
-from plots.scatter_plot import plot_scatter_plot
-from plots.violin_plot import plot_violin_plot
 
 from enums import get_learning_goals, get_question_purposes, get_question_types
 from executions.execution_analyser import (
@@ -38,11 +36,12 @@ from messages.message_analyser import (
     add_message_length,
 )
 from pipeline.pipeline import run_pipeline
-from users.plot import plot_amount_of_interaction_types_vs_grade
+from plots.scatter_plot import plot_scatter_plot, plot_scatter_plot_with_mutliple_lines
+from plots.violin_plot import plot_violin_plot
 from users.user_analyser import (
-    add_basic_execution_statistics,
     add_basic_interaction_statistics,
     add_basic_learning_goals_statistics,
+    add_basic_user_statistics,
     add_bayesian_knowledge_tracing,
     add_learning_goals_result_series,
     add_moving_average,
@@ -66,6 +65,12 @@ def run_jupyter_data_pipeline():
 
     # Get enums
     question_types = get_question_types()
+    unknown_question_type = question_types[-1]
+    if unknown_question_type.name != "Not detected":
+        raise ValueError(
+            "The last question type should be 'Not detected', but it is not. "
+            "Please check the get_question_types function."
+        )
     question_purposes = get_question_purposes()
     learning_goals = get_learning_goals()
 
@@ -95,17 +100,16 @@ def run_jupyter_data_pipeline():
         # interactions
         add_interactions_df,
         add_waiting_time_to_interactions,
-        add_interaction_type(question_types),
+        add_interaction_type(question_types, unknown_question_type),
         add_interaction_purpose(question_purposes),
         add_interaction_learning_goals(learning_goals),
         # Users
-        add_basic_execution_statistics,
+        add_basic_user_statistics,
         add_learning_goals_result_series(learning_goals),
         add_basic_learning_goals_statistics(learning_goals),
         add_bayesian_knowledge_tracing(learning_goals),
         add_moving_average(learning_goals, window_size=20),
-        add_basic_interaction_statistics(question_types),
-        plot_amount_of_interaction_types_vs_grade(OUTPUT_DIR, question_types),
+        add_basic_interaction_statistics(question_types, question_purposes),
         # Interactions part 2
         add_increase_in_success_rate,
         # overview
@@ -127,7 +131,22 @@ def run_jupyter_data_pipeline():
         plot_scatter_plot("users", "num_interactions", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "num_edits", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "num_executions", "grade", OUTPUT_DIR),
+        plot_scatter_plot("users", "num_executed_files", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "execution_success_rate", "grade", OUTPUT_DIR),
+        plot_scatter_plot_with_mutliple_lines(
+            OUTPUT_DIR,
+            "users",
+            "Question type",
+            [f"num_{x.name}_questions" for x in question_types],
+            "grade",
+        ),
+        plot_scatter_plot_with_mutliple_lines(
+            OUTPUT_DIR,
+            "users",
+            "Question purpose",
+            [f"num_{x.name}_questions" for x in question_purposes],
+            "grade",
+        ),
         # Save to Excel
         write_to_excel(f"{OUTPUT_DIR}/jupyter_data.xlsx"),
     ]

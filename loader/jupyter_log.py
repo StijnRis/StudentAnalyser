@@ -42,7 +42,7 @@ def _extract_file_versions(user_id, events):
                         {
                             "user_id": user_id,
                             "datetime": event_time,
-                            "file": f"{file_path_val}_{index}",
+                            "filename": f"{file_path_val}_{index}",
                             "code": code,
                         }
                     )
@@ -77,7 +77,7 @@ def _extract_executions_outputs_errors(user_id, events, start_execution_index):
             "execution_id": start_execution_index + len(executions),
             "user_id": user_id,
             "datetime": event_time,
-            "file": f"{file_val}_{executed_cell_index}",
+            "filename": f"{file_val}_{executed_cell_index}",
         }
         executions.append(execution_record)
         for output_data in executed_cell["outputs"]:
@@ -157,7 +157,7 @@ def _extract_edits(user_id, events):
                 "user_id": user_id,
                 "datetime": event_time,
                 "event_type": event_type,
-                "file": file,
+                "filename": file,
                 "selection": selection,
             }
         )

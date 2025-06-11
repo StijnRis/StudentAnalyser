@@ -37,7 +37,7 @@ def add_error_learning_goal_by_error_pattern_detection(
             file_versions_df[
                 [
                     "file_version_id",
-                    "file",
+                    "filename",
                     "code",
                 ]
             ],
@@ -75,7 +75,7 @@ def add_error_learning_goal_by_error_pattern_detection(
                     return lines[i - 1].strip()
             # Try classic Python format: 'File ... line ...' and return next line
             for i, line in enumerate(lines):
-                if line.strip().startswith("File") and i + 1 < len(lines):
+                if line.strip().startswith("filename") and i + 1 < len(lines):
                     return lines[i + 1].strip()
             return ""
 
@@ -105,7 +105,7 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
             how="left",
         )
         merged = merged.merge(
-            file_versions_df[["file_version_id", "file", "code"]],
+            file_versions_df[["file_version_id", "filename", "code"]],
             on="file_version_id",
             how="left",
         )

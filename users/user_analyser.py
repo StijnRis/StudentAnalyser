@@ -2,21 +2,20 @@ from typing import Dict
 
 import pandas as pd
 
-from enums import QuestionType
+from enums import QuestionPurpose, QuestionType
 from interactions.interaction_analyser import LearningGoal
 
 
-def add_basic_execution_statistics(data: Dict[str, pd.DataFrame]) -> None:
+def add_basic_user_statistics(data: Dict[str, pd.DataFrame]) -> None:
     """
     Add basic statistics to the users DataFrame.
     """
 
     users_df = data["users"]
     edits_df = data["edits"]
-    messages_df = data["messages"]
     executions_df = data["executions"]
-    interactions_df = data["interactions"]
 
+    # Calculate number of messages
     users_df["num_edits"] = (
         users_df["user_id"]
         .map(edits_df["user_id"].value_counts())
@@ -24,6 +23,7 @@ def add_basic_execution_statistics(data: Dict[str, pd.DataFrame]) -> None:
         .astype(int)
     )
 
+    # Calculate number of executions
     users_df["num_executions"] = (
         users_df["user_id"]
         .map(executions_df["user_id"].value_counts())
@@ -37,6 +37,12 @@ def add_basic_execution_statistics(data: Dict[str, pd.DataFrame]) -> None:
     users_df["execution_success_rate"] = (
         users_df["user_id"].map(success_counts) / users_df["user_id"].map(total_counts)
     ).fillna(0)
+
+    # Calculate number of different files (unique file names per user)
+    unique_files_per_user = executions_df.groupby("user_id")["filename"].nunique()
+    users_df["num_executed_files"] = (
+        users_df["user_id"].map(unique_files_per_user).fillna(0).astype(int)
+    )
 
     data["users"] = users_df
 
@@ -235,10 +241,13 @@ def add_moving_average(learning_goals: list[LearningGoal], window_size: int):
     return add_moving_average
 
 
-def add_basic_interaction_statistics(question_types: list[QuestionType]):
+def add_basic_interaction_statistics(
+    question_types: list[QuestionType], question_purposes: list[QuestionPurpose]
+):
     """
     Add basic interaction statistics to the users DataFrame.
     """
+
     def add_basic_interaction_statistics(data: Dict[str, pd.DataFrame]):
         users_df = data["users"]
         interactions_df = data["interactions"]
@@ -250,14 +259,28 @@ def add_basic_interaction_statistics(question_types: list[QuestionType]):
             .astype(int)
         )
 
-        # Add columns for each question_type
+        new_cols = {}
+
         for qtype in question_types:
             col_name = f"num_{qtype.name}_questions"
             counts = interactions_df[interactions_df["question_type"] == qtype][
                 "user_id"
             ].value_counts()
-            users_df[col_name] = users_df["user_id"].map(counts).fillna(0).astype(int)
+            new_cols[col_name] = users_df["user_id"].map(counts).fillna(0).astype(int)
+        
+        for qpurpose in question_purposes:
+            col_name = f"num_{qpurpose.name}_questions"
+            counts = interactions_df[interactions_df["question_purpose"] == qpurpose][
+                "user_id"
+            ].value_counts()
+            new_cols[col_name] = users_df["user_id"].map(counts).fillna(0).astype(int)
+
+        # Assign all new columns at once to avoid fragmentation
+        if new_cols:
+            users_df = pd.concat(
+                [users_df, pd.DataFrame(new_cols, index=users_df.index)], axis=1
+            )
 
         data["users"] = users_df
-    
+
     return add_basic_interaction_statistics

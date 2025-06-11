@@ -30,19 +30,19 @@ def add_file_version_id(data: Dict[str, pd.DataFrame]) -> None:
             [
                 "user_id",
                 "datetime",
-                "file",
+                "filename",
                 "file_version_id",
             ]
         ],
         left_on=[
             "user_id",
             "datetime",
-            "file",
+            "filename",
         ],
         right_on=[
             "user_id",
             "datetime",
-            "file",
+            "filename",
         ],
         how="left",
     )
@@ -98,7 +98,7 @@ def add_surrounding_executions(data: Dict[str, pd.DataFrame]) -> None:
     executions_df = data["executions"]
     # Sort by user_id, file, and datetime for efficient lookups
     executions_df = executions_df.sort_values(
-        ["user_id", "file", "datetime"]
+        ["user_id", "filename", "datetime"]
     ).reset_index(drop=True)
 
     # Prepare output columns
@@ -113,11 +113,11 @@ def add_surrounding_executions(data: Dict[str, pd.DataFrame]) -> None:
     is_previous_execution_success = []
 
     # Group by user and file for efficient lookups
-    grouped = executions_df.groupby(["user_id", "file"], sort=False)
+    grouped = executions_df.groupby(["user_id", "filename"], sort=False)
 
     for idx, row in executions_df.iterrows():
         user_id = row["user_id"]
-        file = row["file"]
+        file = row["filename"]
         dt = row["datetime"]
         group = grouped.get_group((user_id, file))
 
