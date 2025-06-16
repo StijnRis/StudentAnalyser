@@ -11,7 +11,15 @@ def write_to_excel(file_path: str):
 
     def write_to_excel(data: dict[str, pd.DataFrame]):
 
-        workbook = xlsxwriter.Workbook(file_path, {"nan_inf_to_errors": True})
+        workbook = xlsxwriter.Workbook(
+            file_path,
+            {
+                "nan_inf_to_errors": True,
+                "strings_to_numbers": False,
+                "strings_to_formulas": True,
+                "strings_to_urls": True,
+            },
+        )
 
         for key, df in data.items():
             if not isinstance(df, pd.DataFrame):
@@ -20,8 +28,11 @@ def write_to_excel(file_path: str):
             # Create an empty worksheet with the name of the DataFrame
             worksheet = workbook.add_worksheet(key)
 
-            # Custom formatting for timeseries columns (DataFrame or list of (datetime, bool))
+            # Custom formatting
             for col_index, col in enumerate(df.columns):
+                print(f"Processing column: {col} in sheet: {key}")
+                if key == "Print statement_BKT":
+                    print("SDF")
                 if (
                     df[col]
                     .apply(
@@ -32,6 +43,7 @@ def write_to_excel(file_path: str):
                     )
                     .all()
                 ):
+                    # Format for boolean time series
                     all_x = pd.concat(
                         [ts_df.iloc[:, 0] for ts_df in df[col]], ignore_index=True
                     )
@@ -74,14 +86,14 @@ def write_to_excel(file_path: str):
                             else str(x)
                         )
                     )
-                    # Add an empty line at the start of each cell
-                    worksheet.write_column(
-                        1,
-                        col_index,
-                        df[col]
-                        .where(pd.notnull(df[col]), "")
-                        .apply(lambda x: " " * 100 + f"\n{x}"),
-                    )
+                    # Write data in cell
+                    # worksheet.write_column(
+                    #     1,
+                    #     col_index,
+                    #     df[col]
+                    #     .where(pd.notnull(df[col]), "")
+                    #     .apply(lambda x: " " * 100 + f"\n{x}"),
+                    # )
                 elif (
                     df[col]
                     .apply(
@@ -92,6 +104,7 @@ def write_to_excel(file_path: str):
                     )
                     .all()
                 ):
+                    # Format for float time series
                     all_x = pd.concat(
                         [ts_df.iloc[:, 0] for ts_df in df[col]], ignore_index=True
                     )
@@ -133,20 +146,23 @@ def write_to_excel(file_path: str):
                             else str(x)
                         )
                     )
-                    worksheet.write_column(
-                        1,
-                        col_index,
-                        df[col]
-                        .where(pd.notnull(df[col]), "")
-                        .apply(lambda x: " " * 100 + f"\n{x}"),
-                    )
+                    # Write data in cell
+                    # worksheet.write_column(
+                    #     1,
+                    #     col_index,
+                    #     df[col]
+                    #     .where(pd.notnull(df[col]), "")
+                    #     .apply(lambda x: " " * 100 + f"\n{x}"),
+                    # )
                 elif pd.api.types.is_datetime64_any_dtype(df[col]):
+                    # Format for datetime columns
                     date_format = workbook.add_format(
                         {"num_format": "yyyy-mm-dd hh:mm:ss"}
                     )
                     worksheet.write_column(1, col_index, df[col], date_format)
                     worksheet.set_column(col_index, col_index, 19)
                 elif df[col].dtype == "object":
+                    # Format for object columns (strings)
                     df[col] = df[col].apply(
                         lambda x: (
                             "[" + ", ".join(str(i) for i in x) + "]"
@@ -158,6 +174,7 @@ def write_to_excel(file_path: str):
                         1, col_index, df[col].where(pd.notnull(df[col]), "")
                     )
                 else:
+                    # Default format for other types (e.g., numeric)
                     worksheet.write_column(
                         1, col_index, df[col].where(pd.notnull(df[col]), "")
                     )

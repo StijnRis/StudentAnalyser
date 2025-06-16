@@ -28,6 +28,7 @@ from interactions.interaction_analyser import (
     add_interactions_df,
     add_waiting_time_to_interactions,
 )
+from loader.labelled_questions_loader import load_labelled_questions
 from loader.loader_pipeline import generate_loader_pipeline
 from messages.message_analyser import (
     add_code_in_message,
@@ -36,7 +37,10 @@ from messages.message_analyser import (
     add_message_length,
 )
 from pipeline.pipeline import run_pipeline
-from plots.scatter_plot import plot_scatter_plot, plot_scatter_plot_with_mutliple_lines
+from plots.scatter_plot import (
+    plot_scatter_plot,
+    plot_scatter_plot_with_mutliple_datasets,
+)
 from plots.violin_plot import plot_violin_plot
 from users.user_analyser import (
     add_basic_interaction_statistics,
@@ -103,6 +107,11 @@ def run_jupyter_data_pipeline():
         add_interaction_type(question_types, unknown_question_type),
         add_interaction_purpose(question_purposes),
         add_interaction_learning_goals(learning_goals),
+        load_labelled_questions(
+            r"C:\University\Honours\Data\Labeled questions Thom\questions_before_midterm_labeled_by_thom_and_me.xlsx",
+            "question",
+            ["question_type_by_Thom", "question_type_by_Stijn"]
+        ),
         # Users
         add_basic_user_statistics,
         add_learning_goals_result_series(learning_goals),
@@ -123,28 +132,42 @@ def run_jupyter_data_pipeline():
             OUTPUT_DIR,
         ),
         plot_violin_plot(
-            "interactions", "question_purpose", "increase_in_success_rate", OUTPUT_DIR
+            "interactions", "question_purpose_by_question_type", "increase_in_success_rate", OUTPUT_DIR
         ),
         plot_violin_plot(
-            "interactions", "question_type", "increase_in_success_rate", OUTPUT_DIR
+            "interactions", "question_type_by_ai", "increase_in_success_rate", OUTPUT_DIR
         ),
         plot_scatter_plot("users", "num_interactions", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "num_edits", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "num_executions", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "num_executed_files", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "execution_success_rate", "grade", OUTPUT_DIR),
-        plot_scatter_plot_with_mutliple_lines(
+        plot_scatter_plot_with_mutliple_datasets(
             OUTPUT_DIR,
             "users",
             "Question type",
             [f"num_{x.name}_questions" for x in question_types],
             "grade",
         ),
-        plot_scatter_plot_with_mutliple_lines(
+        plot_scatter_plot_with_mutliple_datasets(
             OUTPUT_DIR,
             "users",
             "Question purpose",
             [f"num_{x.name}_questions" for x in question_purposes],
+            "grade",
+        ),
+        plot_scatter_plot_with_mutliple_datasets(
+            OUTPUT_DIR,
+            "users",
+            "Learning goal sucess rate",
+            [f"{x.name}_average_success" for x in learning_goals],
+            "grade",
+        ),
+        plot_scatter_plot_with_mutliple_datasets(
+            OUTPUT_DIR,
+            "users",
+            "Learning goal number of practices",
+            [f"{x.name}_num_practices" for x in learning_goals],
             "grade",
         ),
         # Save to Excel

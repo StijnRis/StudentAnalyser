@@ -147,7 +147,7 @@ def add_interaction_type(
 
         merged = chatbot.add_column_through_chatbot(
             merged,
-            column_name="question_type",
+            column_name="question_type_by_ai",
             generate_prompt_fn=prompt_fn,
             extract_data_fn=extract_fn,
             default_value=not_detected_type,
@@ -156,7 +156,7 @@ def add_interaction_type(
 
         interactions["question_type_prompt"] = merged["question_type_prompt"]
         interactions["question_type_response"] = merged["question_type_response"]
-        interactions["question_type"] = merged["question_type"]
+        interactions["question_type_by_ai"] = merged["question_type_by_ai"]
 
     return add_question_type
 
@@ -219,7 +219,7 @@ def add_interaction_purpose(
 
         merged = chatbot.add_column_through_chatbot(
             merged,
-            column_name="question_purpose",
+            column_name="question_purpose_by_ai",
             generate_prompt_fn=prompt_fn,
             extract_data_fn=extract_fn,
             default_value=None,
@@ -228,12 +228,12 @@ def add_interaction_purpose(
 
         interactions["question_purpose_prompt"] = merged["question_purpose_prompt"]
         interactions["question_purpose_response"] = merged["question_purpose_response"]
-        interactions["question_purpose_by_ai"] = merged["question_purpose"]
+        interactions["question_purpose_by_ai"] = merged["question_purpose_by_ai"]
 
         def get_purpose_from_type(qtype: QuestionType):
             return qtype.question_purpose
 
-        interactions["question_purpose"] = interactions["question_type"].apply(
+        interactions["question_purpose_by_question_type"] = interactions["question_type_by_ai"].apply(
             get_purpose_from_type
         )
 

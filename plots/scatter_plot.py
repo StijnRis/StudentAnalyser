@@ -35,7 +35,7 @@ def plot_scatter_plot(dataframe_name: str, x: str, y: str, output_dir: str):
     return plot_scatter_plot
 
 
-def plot_scatter_plot_with_mutliple_lines(
+def plot_scatter_plot_with_mutliple_datasets(
     output_dir: str,
     dataframe_name: str,
     x_label: str,
@@ -46,7 +46,7 @@ def plot_scatter_plot_with_mutliple_lines(
     Plot the amount of interaction types against the grade.
     """
 
-    def plot(data: dict[str, pd.DataFrame]) -> None:
+    def plot_scatter_plot_with_mutliple_datasets(data: dict[str, pd.DataFrame]) -> None:
         df = data[dataframe_name]
 
         plt.figure(figsize=(10, 7))
@@ -83,4 +83,4 @@ def plot_scatter_plot_with_mutliple_lines(
         plt.savefig(f"{output_dir}/{x_label}_vs_{y_column}_scatter.png")
         plt.close()
 
-    return plot
+    return plot_scatter_plot_with_mutliple_datasets

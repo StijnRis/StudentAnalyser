@@ -1,6 +1,7 @@
 from typing import Dict
 
 import pandas as pd
+from scipy.stats import linregress
 
 from enums import QuestionPurpose, QuestionType
 from interactions.interaction_analyser import LearningGoal
@@ -14,6 +15,7 @@ def add_basic_user_statistics(data: Dict[str, pd.DataFrame]) -> None:
     users_df = data["users"]
     edits_df = data["edits"]
     executions_df = data["executions"]
+    interactions_df = data["interactions"]
 
     # Calculate number of messages
     users_df["num_edits"] = (
@@ -27,6 +29,14 @@ def add_basic_user_statistics(data: Dict[str, pd.DataFrame]) -> None:
     users_df["num_executions"] = (
         users_df["user_id"]
         .map(executions_df["user_id"].value_counts())
+        .fillna(0)
+        .astype(int)
+    )
+
+    # Calculate number of interactions
+    users_df["num_interactions"] = (
+        users_df["user_id"]
+        .map(interactions_df["user_id"].value_counts())
         .fillna(0)
         .astype(int)
     )
@@ -126,14 +136,10 @@ def add_basic_learning_goals_statistics(learning_goals: list[LearningGoal]):
         """
         For each user, for each learning goal, compute the average success rate and the slope coefficient.
         """
-        import numpy as np
-        from scipy.stats import linregress
 
         users_df = data["users"]
 
         for goal in learning_goals:
-            col_name = f"{goal.name} average success"
-            slope_col = f"{goal.name} slope"
 
             def compute_average(user_result_df):
                 num_true = (user_result_df["result"] == True).sum()
@@ -152,10 +158,20 @@ def add_basic_learning_goals_statistics(learning_goals: list[LearningGoal]):
                 slope, intercept, r, p, se = linregress(x, y)
                 return slope
 
+            def compute_num_practices(user_result_df):
+                if user_result_df.empty:
+                    return 0
+                return len(user_result_df)
+
             # Find the column with the result series for this goal
             result_col = f"{goal.name}_series"
-            users_df[col_name] = users_df[result_col].apply(compute_average)
-            users_df[slope_col] = users_df[result_col].apply(compute_slope)
+            users_df[f"{goal.name}_average_success"] = users_df[result_col].apply(
+                compute_average
+            )
+            users_df[f"{goal.name}_slope"] = users_df[result_col].apply(compute_slope)
+            users_df[f"{goal.name}_num_practices"] = users_df[result_col].apply(
+                compute_num_practices
+            )
 
         data["users"] = users_df
 
@@ -252,25 +268,18 @@ def add_basic_interaction_statistics(
         users_df = data["users"]
         interactions_df = data["interactions"]
 
-        users_df["num_interactions"] = (
-            users_df["user_id"]
-            .map(interactions_df["user_id"].value_counts())
-            .fillna(0)
-            .astype(int)
-        )
-
         new_cols = {}
 
         for qtype in question_types:
             col_name = f"num_{qtype.name}_questions"
-            counts = interactions_df[interactions_df["question_type"] == qtype][
+            counts = interactions_df[interactions_df["question_type_by_ai"] == qtype][
                 "user_id"
             ].value_counts()
             new_cols[col_name] = users_df["user_id"].map(counts).fillna(0).astype(int)
-        
+
         for qpurpose in question_purposes:
             col_name = f"num_{qpurpose.name}_questions"
-            counts = interactions_df[interactions_df["question_purpose"] == qpurpose][
+            counts = interactions_df[interactions_df["question_purpose_by_question_type"] == qpurpose][
                 "user_id"
             ].value_counts()
             new_cols[col_name] = users_df["user_id"].map(counts).fillna(0).astype(int)
