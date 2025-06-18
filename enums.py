@@ -117,7 +117,7 @@ def get_question_types() -> List[QuestionType]:
             executive_purpose,
         ),
         QuestionType(
-            "Pasted code without context",
+            "Pasted code without explanation",
             "The user has pasted a piece of code without providing an explicit question or any context.",
             executive_purpose,
         ),

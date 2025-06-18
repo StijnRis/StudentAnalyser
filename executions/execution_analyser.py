@@ -140,7 +140,7 @@ def add_surrounding_executions(data: Dict[str, pd.DataFrame]) -> None:
         )
         # Previous execution (any kind)
         group["is_previous_execution_success"] = (
-            group["success"].shift(1).fillna(False).astype(bool)
+            group["success"].shift(1).fillna(False).infer_objects().astype(bool)
         )
         # Assign back
         executions_df.loc[

@@ -26,9 +26,8 @@ from interactions.interaction_analyser import (
     add_interaction_purpose,
     add_interaction_type,
     add_interactions_df,
-    add_waiting_time_to_interactions,
 )
-from loader.labelled_questions_loader import generate_load_questions_pipeline, load_labelled_questions
+from loader.labelled_questions_loader import generate_load_questions_pipeline
 from loader.loader_pipeline import generate_start_loader_pipeline
 from messages.message_analyser import (
     add_code_in_message,
@@ -40,7 +39,7 @@ from pipeline.pipeline import run_pipeline
 from plots.confusion_matrix import plot_confusion_matrix
 from plots.scatter_plot import (
     plot_scatter_plot,
-    plot_scatter_plot_with_mutliple_datasets,
+    plot_scatter_plot_with_multiple_datasets,
 )
 from plots.violin_plot import plot_violin_plot
 from users.user_analyser import (
@@ -145,52 +144,60 @@ def run_jupyter_data_pipeline():
             "increase_in_success_rate",
             OUTPUT_DIR,
         ),
-        plot_scatter_plot("users", "num_interactions", "grade", OUTPUT_DIR),
-        plot_scatter_plot("users", "num_edits", "grade", OUTPUT_DIR),
-        plot_scatter_plot("users", "num_executions", "grade", OUTPUT_DIR),
-        plot_scatter_plot("users", "num_executed_files", "grade", OUTPUT_DIR),
-        plot_scatter_plot("users", "execution_success_rate", "grade", OUTPUT_DIR),
-        plot_scatter_plot_with_mutliple_datasets(
-            OUTPUT_DIR,
+        plot_scatter_plot("users", "group", "num_interactions", "grade", OUTPUT_DIR),
+        plot_scatter_plot("users", "group", "num_edits", "grade", OUTPUT_DIR),
+        plot_scatter_plot("users", "group", "num_executions", "grade", OUTPUT_DIR),
+        plot_scatter_plot("users", "group", "num_executed_files", "grade", OUTPUT_DIR),
+        plot_scatter_plot(
+            "users", "group", "execution_success_rate", "grade", OUTPUT_DIR
+        ),
+        plot_scatter_plot_with_multiple_datasets(
             "users",
+            "group",
             "Question type",
             [f"num_{x.name}_questions" for x in question_types],
             "grade",
-        ),
-        plot_scatter_plot_with_mutliple_datasets(
             OUTPUT_DIR,
+        ),
+        plot_scatter_plot_with_multiple_datasets(
             "users",
+            "group",
             "Question purpose",
             [f"num_{x.name}_questions" for x in question_purposes],
             "grade",
-        ),
-        plot_scatter_plot_with_mutliple_datasets(
             OUTPUT_DIR,
+        ),
+        plot_scatter_plot_with_multiple_datasets(
             "users",
+            "group",
             "Learning goal success rate",
             [f"{x.name}_average_success" for x in learning_goals],
             "grade",
-        ),
-        plot_scatter_plot_with_mutliple_datasets(
             OUTPUT_DIR,
+        ),
+        plot_scatter_plot_with_multiple_datasets(
             "users",
+            "group",
             "Learning goal number of practices",
             [f"{x.name}_num_practices" for x in learning_goals],
             "grade",
-        ),
-        plot_scatter_plot_with_mutliple_datasets(
             OUTPUT_DIR,
+        ),
+        plot_scatter_plot_with_multiple_datasets(
             "users",
+            "group",
             "Learning goal number of successes",
             [f"{x.name}_num_successes" for x in learning_goals],
             "grade",
-        ),
-        plot_scatter_plot_with_mutliple_datasets(
             OUTPUT_DIR,
+        ),
+        plot_scatter_plot_with_multiple_datasets(
             "users",
+            "group",
             "Learning goal number of failures",
             [f"{x.name}_num_failures" for x in learning_goals],
             "grade",
+            OUTPUT_DIR,
         ),
         # Plot confusion matrices for question types
         plot_confusion_matrix(

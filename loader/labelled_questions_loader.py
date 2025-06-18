@@ -48,19 +48,24 @@ def load_labelled_questions(
 
         # map labels
         if label_map:
-            # Ensure all label columns are strings before mapping
-            df[labels_column] = df[labels_column].astype(str).replace(label_map)
+            # Lowercase the keys and values in label_map for case-insensitive mapping
+            label_map_lower = {
+                str(k).lower(): str(v) for k, v in label_map.items()
+            }
+            # Ensure all label columns are strings and lowercase before mapping
+            for col in labels_column:
+                df[col] = df[col].astype(str).str.lower().replace(label_map_lower)
             # Check for unexpected values after mapping
             for col in labels_column:
                 unique_vals = set(df[col].dropna().unique())
                 # Remove string 'nan' and np.nan from unique values
                 unique_vals.discard("nan")
                 unique_vals.discard(np.nan)
-                unexpected = unique_vals - set(label_map.values())
+                unexpected = unique_vals - set(label_map_lower.values())
                 if unexpected:
                     raise ValueError(
                         f"Unexpected label(s) found in column '{col}': {unexpected}. "
-                        f"Allowed values: {set(label_map.values())}"
+                        f"Allowed values: {set(label_map_lower.values())}"
                     )
 
         # Find corresponding message for each question
@@ -79,7 +84,9 @@ def load_labelled_questions(
         for name, group in df.groupby("question_normalized"):
             for col in labels_column:
                 if group[col].nunique() > 1:
-                    raise ValueError(f"Duplicate question '{name}' with different labels in column '{col}'")
+                    raise ValueError(
+                        f"Duplicate question '{name}' with different labels in column '{col}'"
+                    )
         df = df.drop_duplicates(subset=["question_normalized"] + labels_column)
 
         # Merge on normalized question text
