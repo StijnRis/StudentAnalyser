@@ -28,8 +28,8 @@ from interactions.interaction_analyser import (
     add_interactions_df,
     add_waiting_time_to_interactions,
 )
-from loader.labelled_questions_loader import load_labelled_questions
-from loader.loader_pipeline import generate_loader_pipeline
+from loader.labelled_questions_loader import generate_load_questions_pipeline, load_labelled_questions
+from loader.loader_pipeline import generate_start_loader_pipeline
 from messages.message_analyser import (
     add_code_in_message,
     add_included_code_snippets,
@@ -37,6 +37,7 @@ from messages.message_analyser import (
     add_message_length,
 )
 from pipeline.pipeline import run_pipeline
+from plots.confusion_matrix import plot_confusion_matrix
 from plots.scatter_plot import (
     plot_scatter_plot,
     plot_scatter_plot_with_mutliple_datasets,
@@ -59,7 +60,9 @@ def run_jupyter_data_pipeline():
     METADATA_FOR_ANALYZER_PATH = os.getenv("METADATA_FOR_ANALYZER_PATH")
     BASE_DATA_PATH = os.getenv("BASE_DATA_PATH")
     OUTPUT_DIR = os.getenv("OUTPUT_DIR")
-    FILTER_USERNAME = os.getenv("FILTER_USERNAME", None)
+    FILTER_USERNAMES = os.getenv("FILTER_USERNAMES", None)
+    if FILTER_USERNAMES:
+        FILTER_USERNAMES = FILTER_USERNAMES.split(",")
     if not METADATA_FOR_ANALYZER_PATH:
         raise ValueError(".env misses METADATA_FOR_ANALYZER_PATH")
     if not BASE_DATA_PATH:
@@ -80,8 +83,8 @@ def run_jupyter_data_pipeline():
 
     # Define your pipeline steps
     pipeline_steps: List[Callable[[Dict[str, pd.DataFrame]], None]] = [
-        *generate_loader_pipeline(
-            BASE_DATA_PATH, METADATA_FOR_ANALYZER_PATH, FILTER_USERNAME
+        *generate_start_loader_pipeline(
+            BASE_DATA_PATH, METADATA_FOR_ANALYZER_PATH, FILTER_USERNAMES
         ),
         # executions
         add_execution_success,
@@ -103,14 +106,13 @@ def run_jupyter_data_pipeline():
         add_active_file,
         # interactions
         add_interactions_df,
-        add_waiting_time_to_interactions,
+        # add_waiting_time_to_interactions,
         add_interaction_type(question_types, unknown_question_type),
         add_interaction_purpose(question_purposes),
         add_interaction_learning_goals(learning_goals),
-        load_labelled_questions(
-            r"C:\University\Honours\Data\Labeled questions Thom\questions_before_midterm_labeled_by_thom_and_me.xlsx",
-            "question",
-            ["question_type_by_Thom", "question_type_by_Stijn"]
+        *generate_load_questions_pipeline(
+            BASE_DATA_PATH,
+            METADATA_FOR_ANALYZER_PATH,
         ),
         # Users
         add_basic_user_statistics,
@@ -132,10 +134,16 @@ def run_jupyter_data_pipeline():
             OUTPUT_DIR,
         ),
         plot_violin_plot(
-            "interactions", "question_purpose_by_question_type", "increase_in_success_rate", OUTPUT_DIR
+            "interactions",
+            "question_purpose_by_question_type",
+            "increase_in_success_rate",
+            OUTPUT_DIR,
         ),
         plot_violin_plot(
-            "interactions", "question_type_by_ai", "increase_in_success_rate", OUTPUT_DIR
+            "interactions",
+            "question_type_by_ai",
+            "increase_in_success_rate",
+            OUTPUT_DIR,
         ),
         plot_scatter_plot("users", "num_interactions", "grade", OUTPUT_DIR),
         plot_scatter_plot("users", "num_edits", "grade", OUTPUT_DIR),
@@ -159,7 +167,7 @@ def run_jupyter_data_pipeline():
         plot_scatter_plot_with_mutliple_datasets(
             OUTPUT_DIR,
             "users",
-            "Learning goal sucess rate",
+            "Learning goal success rate",
             [f"{x.name}_average_success" for x in learning_goals],
             "grade",
         ),
@@ -170,6 +178,35 @@ def run_jupyter_data_pipeline():
             [f"{x.name}_num_practices" for x in learning_goals],
             "grade",
         ),
+        plot_scatter_plot_with_mutliple_datasets(
+            OUTPUT_DIR,
+            "users",
+            "Learning goal number of successes",
+            [f"{x.name}_num_successes" for x in learning_goals],
+            "grade",
+        ),
+        plot_scatter_plot_with_mutliple_datasets(
+            OUTPUT_DIR,
+            "users",
+            "Learning goal number of failures",
+            [f"{x.name}_num_failures" for x in learning_goals],
+            "grade",
+        ),
+        # Plot confusion matrices for question types
+        plot_confusion_matrix(
+            "interactions",
+            "question_type_by_Thom",
+            "question_type_by_ai",
+            True,
+            OUTPUT_DIR,
+        ),
+        # plot_confusion_matrix(
+        #     "interactions",
+        #     "question_type_by_Stijn",
+        #     "question_type_by_ai",
+        #     True,
+        #     OUTPUT_DIR,
+        # ),
         # Save to Excel
         write_to_excel(f"{OUTPUT_DIR}/jupyter_data.xlsx"),
     ]

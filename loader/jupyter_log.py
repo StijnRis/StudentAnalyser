@@ -166,7 +166,7 @@ def _extract_edits(user_id, events):
 
 # --- Main loader function ---
 def load_jupyter_log(
-    folder_path: str, group: str, filter_user: str | None
+    folder_path: str, group: str, filter_usernames: list[str] | None
 ) -> Callable[[Dict[str, pd.DataFrame]], None]:
     """
     Loads all file version, execution, and edit logs in a folder and returns DataFrames:
@@ -223,7 +223,7 @@ def load_jupyter_log(
 
             username = file_name.replace("jupyter-", "").replace("-log", "")
             # Optionally filter by user
-            if filter_user and username != filter_user:
+            if filter_usernames and username not in filter_usernames:
                 print(f"Skipping execution log of {username}")
                 continue
             print(f"Loading execution logs for {username}", end=" ")

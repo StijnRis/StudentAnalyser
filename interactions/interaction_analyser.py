@@ -154,8 +154,8 @@ def add_interaction_type(
             max_retries=3,
         )
 
-        interactions["question_type_prompt"] = merged["question_type_prompt"]
-        interactions["question_type_response"] = merged["question_type_response"]
+        interactions["question_type_prompt"] = merged["question_type_by_ai_prompt"]
+        interactions["question_type_response"] = merged["question_type_by_ai_response"]
         interactions["question_type_by_ai"] = merged["question_type_by_ai"]
 
     return add_question_type
@@ -226,8 +226,8 @@ def add_interaction_purpose(
             max_retries=3,
         )
 
-        interactions["question_purpose_prompt"] = merged["question_purpose_prompt"]
-        interactions["question_purpose_response"] = merged["question_purpose_response"]
+        interactions["question_purpose_by_ai_prompt"] = merged["question_purpose_by_ai_prompt"]
+        interactions["question_purpose_by_ai_response"] = merged["question_purpose_by_ai_response"]
         interactions["question_purpose_by_ai"] = merged["question_purpose_by_ai"]
 
         def get_purpose_from_type(qtype: QuestionType):

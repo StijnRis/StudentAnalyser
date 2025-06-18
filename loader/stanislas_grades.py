@@ -4,7 +4,7 @@ import pandas as pd
 
 
 def load_stanislas_grades(
-    log_path: str, max_points: int, group: str, filter_username: str | None
+    log_path: str, max_points: int, group: str, filter_usernames: list[str] | None
 ):
     def load_stanislas_grades(data: Dict[str, pd.DataFrame]) -> None:
         df = pd.read_csv(log_path)
@@ -19,8 +19,8 @@ def load_stanislas_grades(
             (r["group"], r["username"]): r["user_id"] for _, r in users.iterrows()
         }
         next_id = users["user_id"].max() + 1 if not users.empty else 0
-        for username, grade in zip(df["Leerlingnummer"].astype(str), df["grade"]):
-            if filter_username and username != filter_username:
+        for username, grade in zip(df["username"].astype(str), df["grade"]):
+            if filter_usernames and username not in filter_usernames:
                 continue
             key = (group, username)
             if key in user_map:

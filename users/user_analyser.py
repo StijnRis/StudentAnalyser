@@ -162,6 +162,16 @@ def add_basic_learning_goals_statistics(learning_goals: list[LearningGoal]):
                 if user_result_df.empty:
                     return 0
                 return len(user_result_df)
+            
+            def compute_num_successes(user_result_df):
+                if user_result_df.empty:
+                    return 0
+                return (user_result_df["result"] == True).sum()
+            
+            def compute_num_failures(user_result_df):
+                if user_result_df.empty:
+                    return 0
+                return (user_result_df["result"] == False).sum()
 
             # Find the column with the result series for this goal
             result_col = f"{goal.name}_series"
@@ -171,6 +181,12 @@ def add_basic_learning_goals_statistics(learning_goals: list[LearningGoal]):
             users_df[f"{goal.name}_slope"] = users_df[result_col].apply(compute_slope)
             users_df[f"{goal.name}_num_practices"] = users_df[result_col].apply(
                 compute_num_practices
+            )
+            users_df[f"{goal.name}_num_successes"] = users_df[result_col].apply(
+                compute_num_successes
+            )
+            users_df[f"{goal.name}_num_failures"] = users_df[result_col].apply(
+                compute_num_failures
             )
 
         data["users"] = users_df
@@ -233,7 +249,7 @@ def add_moving_average(learning_goals: list[LearningGoal], window_size: int):
         For each user and each learning goal, compute the moving average of the series
         """
         users_df = data["users"]
-
+        new_cols = {}
         for goal in learning_goals:
             series_col = f"{goal.name}_series"
             moving_avg_col = f"{goal.name}_moving_average"
@@ -249,9 +265,11 @@ def add_moving_average(learning_goals: list[LearningGoal], window_size: int):
                 )
                 return result_df[["datetime", "moving_average"]]
 
-            users_df[moving_avg_col] = users_df[series_col].map(compute_moving_average)
-            users_df[moving_avg_col] = users_df[moving_avg_col].astype(object)
+            new_col = users_df[series_col].map(compute_moving_average).astype(object)
+            new_cols[moving_avg_col] = new_col
 
+        # Concatenate all new columns at once to avoid fragmentation
+        users_df = pd.concat([users_df] + [pd.DataFrame({col: vals}) for col, vals in new_cols.items()], axis=1)
         data["users"] = users_df
 
     return add_moving_average

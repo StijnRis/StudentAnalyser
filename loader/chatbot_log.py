@@ -9,7 +9,7 @@ import pandas as pd
 def load_chat_log(
     folder_path: str,
     group: str,
-    filter_user: str | None,
+    filter_usernames: list[str] | None,
 ) -> Callable[[Dict[str, pd.DataFrame]], None]:
     """
     Loads all chat log files in a folder and returns a pandas DataFrame with columns: time, body, sender, automated, user_id, file_path.
@@ -28,7 +28,7 @@ def load_chat_log(
             for _, row in users_df.iterrows()
         }
         for username in os.listdir(folder_path):
-            if filter_user and username != filter_user:
+            if filter_usernames and username not in filter_usernames:
                 print(f"Skipping chat log from {username}")
                 continue
             # Ensure user_id exists for (group, username)

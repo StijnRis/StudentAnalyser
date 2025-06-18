@@ -96,90 +96,91 @@ def add_surrounding_executions(data: Dict[str, pd.DataFrame]) -> None:
         - previous_error_file_version_id, next_error_file_version_id
     """
     executions_df = data["executions"]
-    # Sort by user_id, file, and datetime for efficient lookups
     executions_df = executions_df.sort_values(
         ["user_id", "filename", "datetime"]
     ).reset_index(drop=True)
 
-    # Prepare output columns
-    prev_success_ids = []
-    prev_success_file_version_ids = []
-    next_success_ids = []
-    next_success_file_version_ids = []
-    prev_error_ids = []
-    prev_error_file_version_ids = []
-    next_error_ids = []
-    next_error_file_version_ids = []
-    is_previous_execution_success = []
+    # Prepare columns
+    executions_df["previous_success_id"] = None
+    executions_df["previous_success_file_version_id"] = None
+    executions_df["next_success_id"] = None
+    executions_df["next_success_file_version_id"] = None
+    executions_df["previous_error_id"] = None
+    executions_df["previous_error_file_version_id"] = None
+    executions_df["next_error_id"] = None
+    executions_df["next_error_file_version_id"] = None
+    executions_df["is_previous_execution_success"] = False
 
-    # Group by user and file for efficient lookups
-    grouped = executions_df.groupby(["user_id", "filename"], sort=False)
-
-    for idx, row in executions_df.iterrows():
-        user_id = row["user_id"]
-        file = row["filename"]
-        dt = row["datetime"]
-        group = grouped.get_group((user_id, file))
-
-        # Previous successful execution
-        prev_success = group[(group["datetime"] < dt) & (group["success"])].tail(1)
-        if not prev_success.empty:
-            prev_success_id = prev_success["execution_id"].iloc[0]
-            prev_success_file_version_id = prev_success["file_version_id"].iloc[0]
-        else:
-            prev_success_id = None
-            prev_success_file_version_id = None
-        prev_success_ids.append(prev_success_id)
-        prev_success_file_version_ids.append(prev_success_file_version_id)
-
-        # Next successful execution
-        next_success = group[(group["datetime"] > dt) & (group["success"])].head(1)
-        if not next_success.empty:
-            next_success_id = next_success["execution_id"].iloc[0]
-            next_success_file_version_id = next_success["file_version_id"].iloc[0]
-        else:
-            next_success_id = None
-            next_success_file_version_id = None
-        next_success_ids.append(next_success_id)
-        next_success_file_version_ids.append(next_success_file_version_id)
-
-        # Previous errored execution
-        prev_error = group[(group["datetime"] < dt) & (~group["success"])].tail(1)
-        if not prev_error.empty:
-            prev_error_id = prev_error["execution_id"].iloc[0]
-            prev_error_file_version_id = prev_error["file_version_id"].iloc[0]
-        else:
-            prev_error_id = None
-            prev_error_file_version_id = None
-        prev_error_ids.append(prev_error_id)
-        prev_error_file_version_ids.append(prev_error_file_version_id)
-
-        # Next errored execution
-        next_error = group[(group["datetime"] > dt) & (~group["success"])].head(1)
-        if not next_error.empty:
-            next_error_id = next_error["execution_id"].iloc[0]
-            next_error_file_version_id = next_error["file_version_id"].iloc[0]
-        else:
-            next_error_id = None
-            next_error_file_version_id = None
-        next_error_ids.append(next_error_id)
-        next_error_file_version_ids.append(next_error_file_version_id)
-
+    for (user_id, filename), group in executions_df.groupby(["user_id", "filename"]):
+        group = group.sort_values("datetime").reset_index()
+        # Previous/next successful execution
+        success_mask = group["success"]
+        error_mask = ~group["success"]
+        # Previous success
+        group["previous_success_id"] = (
+            group["execution_id"].where(success_mask).shift(1)
+        )
+        group["previous_success_file_version_id"] = (
+            group["file_version_id"].where(success_mask).shift(1)
+        )
+        # Next success
+        group["next_success_id"] = group["execution_id"].where(success_mask).shift(-1)
+        group["next_success_file_version_id"] = (
+            group["file_version_id"].where(success_mask).shift(-1)
+        )
+        # Previous error
+        group["previous_error_id"] = group["execution_id"].where(error_mask).shift(1)
+        group["previous_error_file_version_id"] = (
+            group["file_version_id"].where(error_mask).shift(1)
+        )
+        # Next error
+        group["next_error_id"] = group["execution_id"].where(error_mask).shift(-1)
+        group["next_error_file_version_id"] = (
+            group["file_version_id"].where(error_mask).shift(-1)
+        )
         # Previous execution (any kind)
-        prev_exec = group[group["datetime"] < dt].tail(1)
-        if not prev_exec.empty:
-            is_prev_success = bool(prev_exec["success"].iloc[0])
-        else:
-            is_prev_success = False
-        is_previous_execution_success.append(is_prev_success)
+        group["is_previous_execution_success"] = (
+            group["success"].shift(1).fillna(False).astype(bool)
+        )
+        # Assign back
+        executions_df.loc[
+            group["index"],
+            [
+                "previous_success_id",
+                "previous_success_file_version_id",
+                "next_success_id",
+                "next_success_file_version_id",
+                "previous_error_id",
+                "previous_error_file_version_id",
+                "next_error_id",
+                "next_error_file_version_id",
+                "is_previous_execution_success",
+            ],
+        ] = group[
+            [
+                "previous_success_id",
+                "previous_success_file_version_id",
+                "next_success_id",
+                "next_success_file_version_id",
+                "previous_error_id",
+                "previous_error_file_version_id",
+                "next_error_id",
+                "next_error_file_version_id",
+                "is_previous_execution_success",
+            ]
+        ].values
 
-    executions_df["previous_success_id"] = prev_success_ids
-    executions_df["previous_success_file_version_id"] = prev_success_file_version_ids
-    executions_df["next_success_id"] = next_success_ids
-    executions_df["next_success_file_version_id"] = next_success_file_version_ids
-    executions_df["previous_error_id"] = prev_error_ids
-    executions_df["previous_error_file_version_id"] = prev_error_file_version_ids
-    executions_df["next_error_id"] = next_error_ids
-    executions_df["next_error_file_version_id"] = next_error_file_version_ids
-    executions_df["is_previous_execution_success"] = is_previous_execution_success
+    # Ensure ID columns keep their integer type (nullable Int64)
+    for col in [
+        "previous_success_id",
+        "previous_success_file_version_id",
+        "next_success_id",
+        "next_success_file_version_id",
+        "previous_error_id",
+        "previous_error_file_version_id",
+        "next_error_id",
+        "next_error_file_version_id",
+    ]:
+        executions_df[col] = executions_df[col]
+
     data["executions"] = executions_df
