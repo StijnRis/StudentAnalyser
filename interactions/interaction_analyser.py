@@ -1,5 +1,6 @@
 from typing import Callable, Dict
 
+import numpy as np
 import pandas as pd
 
 import chatbot
@@ -226,16 +227,20 @@ def add_interaction_purpose(
             max_retries=3,
         )
 
-        interactions["question_purpose_by_ai_prompt"] = merged["question_purpose_by_ai_prompt"]
-        interactions["question_purpose_by_ai_response"] = merged["question_purpose_by_ai_response"]
+        interactions["question_purpose_by_ai_prompt"] = merged[
+            "question_purpose_by_ai_prompt"
+        ]
+        interactions["question_purpose_by_ai_response"] = merged[
+            "question_purpose_by_ai_response"
+        ]
         interactions["question_purpose_by_ai"] = merged["question_purpose_by_ai"]
 
         def get_purpose_from_type(qtype: QuestionType):
             return qtype.question_purpose
 
-        interactions["question_purpose_by_question_type"] = interactions["question_type_by_ai"].apply(
-            get_purpose_from_type
-        )
+        interactions["question_purpose_by_question_type"] = interactions[
+            "question_type_by_ai"
+        ].apply(get_purpose_from_type)
 
     return add_question_purpose
 
@@ -381,6 +386,133 @@ def add_increase_in_success_rate(
             increases.append(None)
 
     interactions["increase_in_success_rate"] = increases
+    data["interactions"] = interactions
+
+
+def add_time_until_next_interaction(
+    data: Dict[str, pd.DataFrame],
+) -> None:
+    """
+    Add time until next interaction to the interactions DataFrame.
+    This calculates the time difference between the current interaction and the next interaction for each user.
+    """
+
+    interactions = data["interactions"]
+
+    # Merge to get question datetimes for sorting
+    merged = interactions.merge(
+        data["messages"][["message_id", "datetime"]],
+        left_on="question_id",
+        right_on="message_id",
+        how="left",
+    )
+
+    # Sort by user and datetime
+    merged = merged.sort_values(["user_id", "datetime"]).reset_index(drop=True)
+
+    # Calculate time until next interaction per user
+    merged["time_until_next_interaction"] = (
+        merged.groupby("user_id")["datetime"].shift(-1) - merged["datetime"]
+    )
+    # Convert timedelta to seconds, replace NaT with np.nan
+    merged["time_until_next_interaction"] = merged["time_until_next_interaction"].apply(
+        lambda x: x.total_seconds() if pd.notnull(x) else np.nan
+    )
+
+    # Assign back to interactions DataFrame
+    interactions["time_until_next_interaction"] = merged["time_until_next_interaction"]
+    data["interactions"] = interactions
+
+
+def add_time_until_next_edit(
+    data: Dict[str, pd.DataFrame],
+) -> None:
+    """
+    Add time until next edit to the interactions DataFrame.
+    This calculates the time difference between the current interaction and the next edit for each user.
+    """
+    interactions = data["interactions"]
+    edits = data["edits"]
+
+    # Merge to get question datetimes for sorting
+    merged = interactions.merge(
+        data["messages"][["message_id", "datetime"]],
+        left_on="question_id",
+        right_on="message_id",
+        how="left",
+    )
+
+    # Sort edits by user and datetime
+    edits_sorted = edits.sort_values(["user_id", "datetime"]).reset_index(drop=True)
+
+    # For each interaction, find the next edit for the same user after the question datetime
+    time_until_next_edit = []
+    for idx, row in merged.iterrows():
+        user_id = row["user_id"]
+        question_time = row["datetime"]
+        user_edits = edits_sorted[
+            (edits_sorted["user_id"] == user_id)
+            & (edits_sorted["datetime"] > question_time)
+        ]
+        if not user_edits.empty:
+            next_edit_time = user_edits.iloc[0]["datetime"]
+            delta = next_edit_time - question_time
+            if pd.isnull(delta):
+                time_until_next_edit.append(np.nan)
+            else:
+                time_until_next_edit.append(delta.total_seconds())
+        else:
+            time_until_next_edit.append(np.nan)
+
+    # Fill any NaT values in the results with np.nan to avoid issues in downstream processing
+    interactions["time_until_next_edit"] = pd.Series(time_until_next_edit)
+    data["interactions"] = interactions
+
+
+def add_time_until_next_execution(
+    data: Dict[str, pd.DataFrame],
+) -> None:
+    """
+    Add time until next execution to the interactions DataFrame.
+    This calculates the time difference between the current interaction and the next execution for each user.
+    """
+    interactions = data["interactions"]
+    executions = data["executions"]
+
+    # Merge to get question datetimes for sorting
+    merged = interactions.merge(
+        data["messages"][["message_id", "datetime"]],
+        left_on="question_id",
+        right_on="message_id",
+        how="left",
+    )
+
+    # Sort executions by user and datetime
+    executions_sorted = executions.sort_values(["user_id", "datetime"]).reset_index(
+        drop=True
+    )
+
+    # For each interaction, find the next execution for the same user after the question datetime
+    time_until_next_execution = []
+    for idx, row in merged.iterrows():
+        user_id = row["user_id"]
+        question_time = row["datetime"]
+        user_executions = executions_sorted[
+            (executions_sorted["user_id"] == user_id)
+            & (executions_sorted["datetime"] > question_time)
+        ]
+        if not user_executions.empty:
+            next_execution_time = user_executions.iloc[0]["datetime"]
+            delta = next_execution_time - question_time
+            if pd.isnull(delta):
+                time_until_next_execution.append(np.nan)
+            else:
+                time_until_next_execution.append(delta.total_seconds())
+        else:
+            time_until_next_execution.append(np.nan)
+
+    # Fill any NaT values in the results with np.nan to avoid issues in downstream processing
+    interactions["time_until_next_execution"] = pd.Series(time_until_next_execution)
     data["interactions"] = interactions
 
 

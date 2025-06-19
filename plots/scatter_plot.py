@@ -69,9 +69,9 @@ def plot_scatter_plot(
             raise ValueError(
                 f"DataFrame must contain a '{group_by}' column for splitting."
             )
-        x_min, x_max, y_min, y_max = _get_global_axis_limits(df, [x], y)
         for value in df[group_by].unique():
             subset = df[df[group_by] == value]
+            x_min, x_max, y_min, y_max = _get_global_axis_limits(subset, [x], y)
             fig, ax = plt.subplots(figsize=(8, 6))
             _plot_scatter_with_stats(ax, subset[x], subset[y])
             ax.set_title(f"Scatter plot of {y} vs {x} for {group_by} = {value}")
@@ -102,10 +102,12 @@ def plot_scatter_plot_with_multiple_datasets(
             raise ValueError(
                 f"DataFrame must contain a '{group_by}' column for splitting."
             )
-        x_min, x_max, y_min, y_max = _get_global_axis_limits(df, x_columns, y_column)
         group_values = df[group_by].dropna().unique()
         for group_value in group_values:
             group_df = df[df[group_by] == group_value]
+            x_min, x_max, y_min, y_max = _get_global_axis_limits(
+                group_df, x_columns, y_column
+            )
             n_items = len(x_columns)
             ncols = min(4, n_items)
             nrows = (n_items + ncols - 1) // ncols
@@ -136,8 +138,10 @@ def plot_scatter_plot_with_multiple_datasets(
                 ax.legend()
                 ax.set_xlim(x_min, x_max)
                 ax.set_ylim(y_min, y_max)
+
             for idx in range(n_items, nrows * ncols):
                 fig.delaxes(axes[idx // ncols, idx % ncols])
+
             plt.tight_layout()
             plt.savefig(
                 f"{output_dir}/{dataframe_name}_{group_by}_{group_value}_{x_label}_vs_{y_column}_scatter_grid.png"

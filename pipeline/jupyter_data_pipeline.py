@@ -26,6 +26,9 @@ from interactions.interaction_analyser import (
     add_interaction_purpose,
     add_interaction_type,
     add_interactions_df,
+    add_time_until_next_edit,
+    add_time_until_next_execution,
+    add_time_until_next_interaction,
 )
 from loader.labelled_questions_loader import generate_load_questions_pipeline
 from loader.loader_pipeline import generate_start_loader_pipeline
@@ -105,6 +108,9 @@ def run_jupyter_data_pipeline():
         add_active_file,
         # interactions
         add_interactions_df,
+        add_time_until_next_interaction,
+        add_time_until_next_edit,
+        add_time_until_next_execution,
         # add_waiting_time_to_interactions,
         add_interaction_type(question_types, unknown_question_type),
         add_interaction_purpose(question_purposes),
@@ -212,6 +218,24 @@ def run_jupyter_data_pipeline():
         #     "question_type_by_Stijn",
         #     "question_type_by_ai",
         #     True,
+        #     OUTPUT_DIR,
+        # ),
+        # plot_violin_plot(
+        #     "interactions",
+        #     "question_type_by_ai",
+        #     "time_until_next_edit",
+        #     OUTPUT_DIR,
+        # ),
+        # plot_violin_plot(
+        #     "interactions",
+        #     "question_type_by_ai",
+        #     "time_until_next_interaction",
+        #     OUTPUT_DIR,
+        # ),
+        # plot_violin_plot(
+        #     "interactions",
+        #     "question_type_by_ai",
+        #     "time_until_next_execution",
         #     OUTPUT_DIR,
         # ),
         # Save to Excel

@@ -18,8 +18,12 @@ def plot_violin_plot(dataframe_name, x, y, output_dir):
             if isinstance(point1, list):
                 for item in point1:
                     records.append({x: str(item), y: float(point2)})
+            elif isinstance(point2, pd.Timedelta):
+                records.append({x: str(point1), y: point2.total_seconds()})
+            elif isinstance(point2, (float, int)):
+                records.append({x: str(point1), y: point2})
             else:
-                records.append({x: str(point1), y: float(point2)})
+                print(f"Skipping row with unexpected types: {point1}, {point2}")
         plot_df = pd.DataFrame(records)
 
         # Drop missing values
