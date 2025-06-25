@@ -1,8 +1,8 @@
 import ast
 import difflib
-from difflib import ndiff
 
 from enums import LearningGoal
+
 
 def get_ranges_of_changed_code(old_code: str, new_code: str) -> list[tuple[int, int]]:
     old_lines = old_code.splitlines()
@@ -32,7 +32,10 @@ def get_ranges_of_changed_code(old_code: str, new_code: str) -> list[tuple[int, 
 
     return changed_positions
 
-def get_ast_nodes_for_ranges(code: str, ranges: list[tuple[int, int, int]]) -> list[ast.AST]:
+
+def get_ast_nodes_for_ranges(
+    code: str, ranges: list[tuple[int, int, int]]
+) -> list[ast.AST]:
     """
     Get AST nodes for specific line ranges in the code.
     :param code: The source code as a string.
@@ -46,6 +49,7 @@ def get_ast_nodes_for_ranges(code: str, ranges: list[tuple[int, int, int]]) -> l
     nodes = []
 
     possible_ranges = set((line, start, end) for line, start, end in ranges)
+
     def bfs(node):
         """
         Perform a breadth-first search to find nodes that fall within the possible ranges.
@@ -60,12 +64,12 @@ def get_ast_nodes_for_ranges(code: str, ranges: list[tuple[int, int, int]]) -> l
                 raise ValueError(
                     "Node does not have col_offset attribute, which is required for range detection."
                 )
-            
+
             for line, column_start, column_end in possible_ranges:
                 if line == node.lineno:
                     # Check if the node's column range overlaps with the given range
-                    node_start = node.col_offset + 1 # Convert to 1-based index
-                    node_end = node.end_col_offset + 1 # Convert to 1-based index
+                    node_start = node.col_offset + 1  # Convert to 1-based index
+                    node_end = node.end_col_offset + 1  # Convert to 1-based index
                     if not (node_end <= column_start or node_start >= column_end):
                         nodes.append(node)
 
@@ -78,6 +82,7 @@ def get_ast_nodes_for_ranges(code: str, ranges: list[tuple[int, int, int]]) -> l
     bfs(parsed_ast)
 
     return nodes
+
 
 def detect_learning_goals(
     constructs: list[ast.AST], learning_goals: list[LearningGoal]

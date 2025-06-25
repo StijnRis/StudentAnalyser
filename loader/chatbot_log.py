@@ -8,7 +8,6 @@ import pandas as pd
 
 def load_chat_log(
     folder_path: str,
-    group: str,
     filter_usernames: list[str] | None,
 ) -> Callable[[Dict[str, pd.DataFrame]], None]:
     """
@@ -24,7 +23,7 @@ def load_chat_log(
         )
         next_user_id = users_df["user_id"].max() + 1 if not users_df.empty else 0
         user_id_map = {
-            (row["group"], row["username"]): row["user_id"]
+            row["username"]: row["user_id"]
             for _, row in users_df.iterrows()
         }
         for username in os.listdir(folder_path):
@@ -32,8 +31,7 @@ def load_chat_log(
                 print(f"Skipping chat log from {username}")
                 continue
             # Ensure user_id exists for (group, username)
-            user_key = (group, username)
-            if user_key not in user_id_map:
+            if username not in user_id_map:
                 user_id = next_user_id
                 users_df = pd.concat(
                     [
@@ -41,17 +39,16 @@ def load_chat_log(
                         pd.DataFrame(
                             {
                                 "user_id": [user_id],
-                                "group": [group],
                                 "username": [username],
                             }
                         ),
                     ],
                     ignore_index=True,
                 )
-                user_id_map[user_key] = user_id
+                user_id_map[username] = user_id
                 next_user_id += 1
             else:
-                user_id = user_id_map[user_key]
+                user_id = user_id_map[username]
             print(f"Loading chat logs for {username}", end=" ")
             amount_of_messages = 0
             for file_name in os.listdir(os.path.join(folder_path, username)):
@@ -70,7 +67,6 @@ def load_chat_log(
                     automated = msg.get("automated", sender == "Juno")
                     messages.append(
                         {
-                            "group": group,
                             "user_id": user_id,
                             "datetime": time,
                             "body": body,

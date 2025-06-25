@@ -13,9 +13,14 @@ def plot_confusion_matrix(
         if exclude_nan:
             df = df[df[x].notna() & df[y].notna()]
 
-        # Convert both columns to string representations
-        df[x] = df[x].astype(str)
-        df[y] = df[y].astype(str)
+        # Convert both columns to string representations, handling lists by converting each item to string
+        def stringify(val):
+            if isinstance(val, list):
+                return str([str(item) for item in val])
+            return str(val)
+
+        df[x] = df[x].apply(stringify)
+        df[y] = df[y].apply(stringify)
 
         # Get all unique labels from both columns, sort for consistent order
         all_labels = sorted(set(df[x].unique()) | set(df[y].unique()))
@@ -32,13 +37,13 @@ def plot_confusion_matrix(
         # Plot the confusion matrix
         plt.figure(figsize=(19.20, 10.80), dpi=100)
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-        plt.title(f"Confusion Matrix: {x} vs {y}")
+        plt.title(f"Confusion matrix: {x} vs {y}")
         plt.xlabel(y)
         plt.ylabel(x)
         plt.xticks(rotation=45, ha="right", fontsize=10)
         plt.yticks(rotation=0, fontsize=10)
         plt.tight_layout()
-        plt.savefig(f"{output_dir}/{dataframe_name}_{x}_vs_{y}_confusion_matrix.png")
+        plt.savefig(f"{output_dir}/confusion_matrix_{dataframe_name}_{x}_vs_{y}.png")
         plt.close()
 
     return plot_confusion_matrix

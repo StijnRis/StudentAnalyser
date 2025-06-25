@@ -3,7 +3,7 @@ import pandas as pd
 import seaborn as sns
 
 
-def plot_violin_plot(dataframe_name, x, y, output_dir):
+def plot_violin_plot(dataframe_name: str, x: str, y: str, output_dir: str):
     def plot_violin_plot(data: dict[str, pd.DataFrame]) -> None:
         """
         Generate a violin plot between columns x and y from the specified dataframe.
@@ -42,7 +42,7 @@ def plot_violin_plot(dataframe_name, x, y, output_dir):
         plt.xticks(rotation=45, ha="right")
         plt.title(f"{x} vs {y}")
         plt.tight_layout()
-        plt.savefig(f"{output_dir}/{dataframe_name}_{x}_vs_{y}_violin_plot.png")
+        plt.savefig(f"{output_dir}/violin_plot_{dataframe_name}_{x}_vs_{y}.png")
         plt.close()
 
     return plot_violin_plot

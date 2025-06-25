@@ -87,6 +87,7 @@ def add_new_code_analysis(learning_goals: list[LearningGoal]):
             return detect_learning_goals(constructs, learning_goals)
 
         # Compute all columns in sequence
+
         merged["ranges_of_new_code"] = merged.apply(
             compute_line_numbers_of_new_code, axis=1
         )

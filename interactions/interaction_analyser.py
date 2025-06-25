@@ -389,6 +389,22 @@ def add_increase_in_success_rate(
     data["interactions"] = interactions
 
 
+def exclude_outlier_times(series):
+    """
+    Replace outlier values in the series (using the IQR method) with np.nan.
+    Outliers are values outside 1.5 * IQR from the 25th and 75th percentiles.
+    Ignores NaN values.
+    """
+    q1 = series.quantile(0.25)
+    q3 = series.quantile(0.75)
+    iqr = q3 - q1
+    lower = q1 - 1.5 * iqr
+    upper = q3 + 1.5 * iqr
+    return series.where(
+        (series.isna()) | ((series >= lower) & (series <= upper)), np.nan
+    )
+
+
 def add_time_until_next_interaction(
     data: Dict[str, pd.DataFrame],
 ) -> None:
@@ -418,7 +434,10 @@ def add_time_until_next_interaction(
     merged["time_until_next_interaction"] = merged["time_until_next_interaction"].apply(
         lambda x: x.total_seconds() if pd.notnull(x) else np.nan
     )
-
+    # Exclude outlier times (e.g., >2 days)
+    merged["time_until_next_interaction"] = exclude_outlier_times(
+        merged["time_until_next_interaction"]
+    )
     # Assign back to interactions DataFrame
     interactions["time_until_next_interaction"] = merged["time_until_next_interaction"]
     data["interactions"] = interactions
@@ -463,9 +482,10 @@ def add_time_until_next_edit(
                 time_until_next_edit.append(delta.total_seconds())
         else:
             time_until_next_edit.append(np.nan)
-
-    # Fill any NaT values in the results with np.nan to avoid issues in downstream processing
-    interactions["time_until_next_edit"] = pd.Series(time_until_next_edit)
+    # Exclude outlier times (e.g., >2 days)
+    interactions["time_until_next_edit"] = exclude_outlier_times(
+        pd.Series(time_until_next_edit)
+    )
     data["interactions"] = interactions
 
 
@@ -510,9 +530,10 @@ def add_time_until_next_execution(
                 time_until_next_execution.append(delta.total_seconds())
         else:
             time_until_next_execution.append(np.nan)
-
-    # Fill any NaT values in the results with np.nan to avoid issues in downstream processing
-    interactions["time_until_next_execution"] = pd.Series(time_until_next_execution)
+    # Exclude outlier times (e.g., >2 days)
+    interactions["time_until_next_execution"] = exclude_outlier_times(
+        pd.Series(time_until_next_execution)
+    )
     data["interactions"] = interactions
 
 

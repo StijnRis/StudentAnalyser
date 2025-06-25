@@ -162,12 +162,12 @@ def add_basic_learning_goals_statistics(learning_goals: list[LearningGoal]):
                 if user_result_df.empty:
                     return 0
                 return len(user_result_df)
-            
+
             def compute_num_successes(user_result_df):
                 if user_result_df.empty:
                     return 0
                 return (user_result_df["result"] == True).sum()
-            
+
             def compute_num_failures(user_result_df):
                 if user_result_df.empty:
                     return 0
@@ -208,6 +208,7 @@ def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
         p_guess = 0.2
         p_slip = 0.2
 
+        new_cols = {}
         for goal in learning_goals:
             col_name = f"{goal.name}_series"
             bkt_col = f"{goal.name}_BKT"
@@ -232,12 +233,13 @@ def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
                     p_know = p_know_given_obs + (1 - p_know_given_obs) * p_learn
                     index.append(dt)
                     values.append(p_know)
-
                 return pd.DataFrame({"datetime": index, "p_known": values})
 
-            users_df[bkt_col] = users_df[col_name].map(bkt_trace).astype(object)
-            users_df[bkt_col] = users_df[bkt_col]
-
+            new_cols[bkt_col] = users_df[col_name].map(bkt_trace).astype(object)
+        # Assign all new columns at once to avoid fragmentation
+        users_df = pd.concat(
+            [users_df, pd.DataFrame(new_cols, index=users_df.index)], axis=1
+        )
         data["users"] = users_df
 
     return add_bkt
@@ -269,7 +271,10 @@ def add_moving_average(learning_goals: list[LearningGoal], window_size: int):
             new_cols[moving_avg_col] = new_col
 
         # Concatenate all new columns at once to avoid fragmentation
-        users_df = pd.concat([users_df] + [pd.DataFrame({col: vals}) for col, vals in new_cols.items()], axis=1)
+        users_df = pd.concat(
+            [users_df] + [pd.DataFrame({col: vals}) for col, vals in new_cols.items()],
+            axis=1,
+        )
         data["users"] = users_df
 
     return add_moving_average
@@ -297,9 +302,9 @@ def add_basic_interaction_statistics(
 
         for qpurpose in question_purposes:
             col_name = f"num_{qpurpose.name}_questions"
-            counts = interactions_df[interactions_df["question_purpose_by_question_type"] == qpurpose][
-                "user_id"
-            ].value_counts()
+            counts = interactions_df[
+                interactions_df["question_purpose_by_question_type"] == qpurpose
+            ]["user_id"].value_counts()
             new_cols[col_name] = users_df["user_id"].map(counts).fillna(0).astype(int)
 
         # Assign all new columns at once to avoid fragmentation

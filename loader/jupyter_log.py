@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from datetime import datetime
 from typing import Callable, Dict
 
@@ -84,11 +83,7 @@ def _extract_executions_outputs_errors(user_id, events, start_execution_index):
             output_type = output_data.get("output_type")
             execution_id = execution_record["execution_id"]
             if output_type == "error":
-                traceback = re.sub(
-                    r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]",
-                    "",
-                    "\n".join(output_data["traceback"]),
-                )
+                traceback = "\n".join(output_data["traceback"])
                 name = output_data["ename"]
                 if name == "KeyboardInterrupt":
                     output_record = {
@@ -166,7 +161,7 @@ def _extract_edits(user_id, events):
 
 # --- Main loader function ---
 def load_jupyter_log(
-    folder_path: str, group: str, filter_usernames: list[str] | None
+    folder_path: str, filter_usernames: list[str] | None
 ) -> Callable[[Dict[str, pd.DataFrame]], None]:
     """
     Loads all file version, execution, and edit logs in a folder and returns DataFrames:
@@ -188,8 +183,7 @@ def load_jupyter_log(
         )
         next_user_id = users_df["user_id"].max() + 1 if not users_df.empty else 0
         user_id_map = {
-            (row["group"], row["username"]): row["user_id"]
-            for _, row in users_df.iterrows()
+            row["username"]: row["user_id"] for _, row in users_df.iterrows()
         }
 
         file_versions_df = data.get("file_versions", pd.DataFrame())
@@ -207,9 +201,13 @@ def load_jupyter_log(
             executions_df["execution_id"].max() + 1 if not executions_df.empty else 0
         )
         outputs_id_offset = (
-            outputs_df["success_output_id"].max() + 1 if not outputs_df.empty else 0
+            outputs_df["execution_success_output_id"].max() + 1
+            if not outputs_df.empty
+            else 0
         )
-        errors_id_offset = errors_df["error_id"].max() + 1 if not errors_df.empty else 0
+        errors_id_offset = (
+            errors_df["execution_error_id"].max() + 1 if not errors_df.empty else 0
+        )
         edits_id_offset = edits_df["edit_id"].max() + 1 if not edits_df.empty else 0
 
         file_versions = []
@@ -232,8 +230,7 @@ def load_jupyter_log(
             print(f"(Checking {len(events)} events)")
 
             # --- USER ID LOGIC ---
-            user_key = (group, username)
-            if user_key not in user_id_map:
+            if username not in user_id_map:
                 user_id = next_user_id
                 users_df = pd.concat(
                     [
@@ -241,17 +238,16 @@ def load_jupyter_log(
                         pd.DataFrame(
                             {
                                 "user_id": [user_id],
-                                "group": [group],
                                 "username": [username],
                             }
                         ),
                     ],
                     ignore_index=True,
                 )
-                user_id_map[user_key] = user_id
+                user_id_map[username] = user_id
                 next_user_id += 1
             else:
-                user_id = user_id_map[user_key]
+                user_id = user_id_map[username]
             # --- Extract and accumulate all types of records, using user_id ---
             file_versions.extend(_extract_file_versions(user_id, events))
             execs, outs, errs = _extract_executions_outputs_errors(
@@ -263,7 +259,9 @@ def load_jupyter_log(
             edits.extend(_extract_edits(user_id, events))
 
         # Save to data
-        new_file_versions_df = pd.DataFrame(file_versions)
+        new_file_versions_df = pd.DataFrame(
+            file_versions, columns=["user_id", "datetime", "filename", "code"]
+        )
         new_file_versions_df.insert(
             0,
             "file_version_id",
@@ -273,30 +271,41 @@ def load_jupyter_log(
             [file_versions_df, new_file_versions_df], ignore_index=True
         )
 
-        new_executions_df = pd.DataFrame(executions)
+        new_executions_df = pd.DataFrame(
+            executions, columns=["user_id", "datetime", "filename", "execution_id"]
+        )
         data["executions"] = pd.concat(
             [executions_df, new_executions_df], ignore_index=True
         )
 
-        new_success_outputs_df = pd.DataFrame(outputs)
+        new_success_outputs_df = pd.DataFrame(
+            outputs, columns=["execution_id", "output_type", "output_text"]
+        )
         new_success_outputs_df.insert(
             0,
-            "success_output_id",
+            "execution_success_output_id",
             range(outputs_id_offset, outputs_id_offset + len(outputs)),
         )
         data["execution_success_outputs"] = pd.concat(
             [outputs_df, new_success_outputs_df], ignore_index=True
         )
 
-        new_errors_df = pd.DataFrame(errors)
+        new_errors_df = pd.DataFrame(
+            errors, columns=["execution_id", "error_name", "error_value", "traceback"]
+        )
         new_errors_df.insert(
-            0, "error_id", range(errors_id_offset, errors_id_offset + len(errors))
+            0,
+            "execution_error_id",
+            range(errors_id_offset, errors_id_offset + len(errors)),
         )
         data["execution_errors"] = pd.concat(
             [errors_df, new_errors_df], ignore_index=True
         )
 
-        new_edits_df = pd.DataFrame(edits)
+        new_edits_df = pd.DataFrame(
+            edits,
+            columns=["user_id", "datetime", "event_type", "filename", "selection"],
+        )
         new_edits_df.insert(
             0, "edit_id", range(edits_id_offset, edits_id_offset + len(edits))
         )

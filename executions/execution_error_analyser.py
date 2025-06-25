@@ -11,6 +11,27 @@ from executions.execution_utils import (
 )
 
 
+def add_cleaned_traceback(data: Dict[str, pd.DataFrame]) -> None:
+    """
+    Clean the traceback information in the execution errors DataFrame.
+    Removes line numbers, file references, caret lines, and separator lines. Standardizes format.
+    """
+    import re
+
+    execution_errors_df = data["execution_errors"]
+
+    def traceback_no_formatting(traceback: str) -> str:
+        return re.sub(
+            r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]",
+            "",
+            traceback,
+        )
+    
+    execution_errors_df["traceback_no_formatting"] = execution_errors_df[
+        "traceback"
+    ].apply(traceback_no_formatting)
+
+
 def add_error_learning_goal_by_error_pattern_detection(
     learning_goals: list[LearningGoal],
 ):
@@ -52,35 +73,23 @@ def add_error_learning_goal_by_error_pattern_detection(
             for learning_goal in learning_goals:
                 if learning_goal.found_in_error(
                     error_name=row["error_name"],
-                    traceback=row["traceback"],
+                    traceback=row["traceback_no_formatting"],
                     code=row["code"],
-                    code_line=row["code_line"],
+                    code_line=row["code_part"],
                 ):
                     matched_goals.append(learning_goal)
             return matched_goals
 
         # Add code_line column
-        def extract_code_line(row):
-            lines = row["traceback"].strip().splitlines()
-            # Try arrow format first
-            arrow_line = next(
-                (line.strip().lstrip("->").strip() for line in lines if "-->" in line),
-                None,
-            )
-            if arrow_line:
-                return arrow_line
-            # Try Jupyter/Cell format: look for line with caret '^', return previous line
-            for i, line in enumerate(lines):
-                if line.strip().startswith("^") and i > 0:
-                    return lines[i - 1].strip()
-            # Try classic Python format: 'File ... line ...' and return next line
-            for i, line in enumerate(lines):
-                if line.strip().startswith("filename") and i + 1 < len(lines):
-                    return lines[i + 1].strip()
-            return ""
+        def extract_code_part(row):
+            import re
 
-        merged["code_line"] = merged.apply(extract_code_line, axis=1)
-        execution_errors_df["code_line"] = merged["code_line"]
+            yellow_code_pattern = re.compile(r"\x1b\[[0-9;]*43m(.*?)\x1b\[[0-9;]*49m")
+            matches = yellow_code_pattern.findall(row["traceback"])
+            return "".join(matches) if matches else ""
+
+        merged["code_part"] = merged.apply(extract_code_part, axis=1)
+        execution_errors_df["code_part"] = merged["code_part"]
         execution_errors_df["learning_goals_in_error_by_error_pattern_detection"] = (
             merged.apply(detect_learning_goals, axis=1)
         )
@@ -116,7 +125,7 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
         def prompt_fn(row):
             code = row["code"]
             error_value = row["error_value"]
-            traceback = row["traceback"]
+            traceback = row["traceback_no_formatting"]
             return (
                 "Let's work this out in a step by step way to be sure we have the right answer.\n"
                 "What learning goals failed for the following error?\n"
@@ -151,16 +160,15 @@ def add_error_learning_goal_by_ai_detection(learning_goals: list[LearningGoal]):
         execution_errors_df["learning_goals_in_error_by_ai_prompt"] = merged[
             "learning_goals_in_error_by_ai_prompt"
         ]
-        execution_errors_df["learning_goals_in_error_by_ai_response"] = (
-            merged["learning_goals_in_error_by_ai_response"]
-        )
+        execution_errors_df["learning_goals_in_error_by_ai_response"] = merged[
+            "learning_goals_in_error_by_ai_response"
+        ]
 
     return add_error_learning_goal_by_ai_detection
 
 
-# TODO instead of looking at full lines, check exactly which parts of line
-def add_user_fix_analysis(learning_goals: list[LearningGoal]):
-    def add_user_fix_analysis(data: Dict[str, pd.DataFrame]) -> None:
+def add_error_learning_goal_by_user_fix(learning_goals: list[LearningGoal]):
+    def add_error_learning_goal_by_user_fix(data: Dict[str, pd.DataFrame]) -> None:
         """
         For each execution error, compute:
             - line numbers of code changed in the next successful execution
@@ -209,13 +217,13 @@ def add_user_fix_analysis(learning_goals: list[LearningGoal]):
             return get_ranges_of_changed_code(code_current, code_next_version)
 
         def compute_changed_constructs(row):
-            code_next_version = row["code_next_version"] or ""
+            code_next_version = row["code_next_version"] or row["code"]
             ranges = row["ranges_of_changed_code_next_success"]
             return get_ast_nodes_for_ranges(code_next_version, ranges)
 
         def compute_learning_goals_of_changed_code(row):
             constructs = row["changed_constructs_next_success"]
-            return detect_learning_goals(constructs, learning_goals)
+            return list(set(detect_learning_goals(constructs, learning_goals)))
 
         # Compute all columns in sequence with new names
         merged["ranges_of_changed_code_next_success"] = merged.apply(
@@ -239,4 +247,4 @@ def add_user_fix_analysis(learning_goals: list[LearningGoal]):
 
         data["execution_errors"] = execution_errors_df
 
-    return add_user_fix_analysis
+    return add_error_learning_goal_by_user_fix
