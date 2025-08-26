@@ -101,6 +101,8 @@ def run_jupyter_data_pipeline():
         print(f"Running pipeline for group: {group}")
 
         group_output_dir = os.path.join(OUTPUT_DIR, group)
+        if FILTER_USERNAMES:
+            group_output_dir = os.path.join(group_output_dir, "filtered")
         os.makedirs(group_output_dir, exist_ok=True)
 
         # Define your pipeline steps for this group

@@ -5,6 +5,7 @@ import pandas as pd
 import chatbot
 from enums import LearningGoal
 from executions.execution_utils import (
+    convert_ast_nodes_to_strings,
     detect_learning_goals,
     get_ast_nodes_for_ranges,
     get_ranges_of_changed_code,
@@ -220,6 +221,10 @@ def add_error_learning_goal_by_user_fix(learning_goals: list[LearningGoal]):
             code_next_version = row["code_next_version"] or row["code"]
             ranges = row["ranges_of_changed_code_next_success"]
             return get_ast_nodes_for_ranges(code_next_version, ranges)
+        
+        def convert_all_ast_nodes_to_strings(row):
+            nodes = row["changed_constructs_next_success"]
+            return convert_ast_nodes_to_strings(nodes)
 
         def compute_learning_goals_of_changed_code(row):
             constructs = row["changed_constructs_next_success"]
@@ -232,12 +237,21 @@ def add_error_learning_goal_by_user_fix(learning_goals: list[LearningGoal]):
         execution_errors_df["ranges_of_changed_code_next_success"] = merged[
             "ranges_of_changed_code_next_success"
         ]
+
         merged["changed_constructs_next_success"] = merged.apply(
             compute_changed_constructs, axis=1
         ).astype(object)
         execution_errors_df["changed_constructs_next_success"] = merged[
             "changed_constructs_next_success"
         ]
+
+        merged["changed_constructs_as_string_next_success"] = merged.apply(
+            convert_all_ast_nodes_to_strings, axis=1
+        )
+        execution_errors_df["changed_constructs_as_string_next_success"] = merged[
+            "changed_constructs_as_string_next_success"
+        ]
+
         merged["learning_goals_in_error_by_user_fix"] = merged.apply(
             compute_learning_goals_of_changed_code, axis=1
         )

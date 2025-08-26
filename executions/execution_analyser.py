@@ -113,34 +113,42 @@ def add_surrounding_executions(data: Dict[str, pd.DataFrame]) -> None:
 
     for (user_id, filename), group in executions_df.groupby(["user_id", "filename"]):
         group = group.sort_values("datetime").reset_index()
+
         # Previous/next successful execution
         success_mask = group["success"]
         error_mask = ~group["success"]
+
         # Previous success
         group["previous_success_id"] = (
-            group["execution_id"].where(success_mask).shift(1)
+            group["execution_id"].where(success_mask).ffill().shift(1)
         )
         group["previous_success_file_version_id"] = (
-            group["file_version_id"].where(success_mask).shift(1)
+            group["file_version_id"].where(success_mask).ffill().shift(1)
         )
         # Next success
-        group["next_success_id"] = group["execution_id"].where(success_mask).shift(-1)
+        group["next_success_id"] = (
+            group["execution_id"].where(success_mask).bfill().shift(-1)
+        )
         group["next_success_file_version_id"] = (
-            group["file_version_id"].where(success_mask).shift(-1)
+            group["file_version_id"].where(success_mask).bfill().shift(-1)
         )
         # Previous error
-        group["previous_error_id"] = group["execution_id"].where(error_mask).shift(1)
+        group["previous_error_id"] = (
+            group["execution_id"].where(error_mask).ffill().shift(1)
+        )
         group["previous_error_file_version_id"] = (
-            group["file_version_id"].where(error_mask).shift(1)
+            group["file_version_id"].where(error_mask).ffill().shift(1)
         )
         # Next error
-        group["next_error_id"] = group["execution_id"].where(error_mask).shift(-1)
-        group["next_error_file_version_id"] = (
-            group["file_version_id"].where(error_mask).shift(-1)
+        group["next_error_id"] = (
+            group["execution_id"].where(error_mask).bfill().shift(-1)
         )
-        # Previous execution (any kind)
+        group["next_error_file_version_id"] = (
+            group["file_version_id"].where(error_mask).bfill().shift(-1)
+        )
+        # Previous execution
         group["is_previous_execution_success"] = (
-            group["success"].shift(1).fillna(False).infer_objects().astype(bool)
+            group["success"].shift(1).fillna(False).astype(bool)
         )
         # Assign back
         executions_df.loc[

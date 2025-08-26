@@ -83,6 +83,20 @@ def get_ast_nodes_for_ranges(
 
     return nodes
 
+def convert_ast_nodes_to_strings(nodes: list[ast.AST]) -> list[str]:
+    result = []
+    for node in nodes:
+        # Add the AST node type
+        result.append(type(node).__name__)
+
+        # Check for function calls like input(), print(), etc.
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name):
+                result.append(f"Call:{node.func.id}")
+            elif isinstance(node.func, ast.Attribute):
+                result.append(f"Call:{node.func.attr}")
+    return result
+
 
 def detect_learning_goals(
     constructs: list[ast.AST], learning_goals: list[LearningGoal]

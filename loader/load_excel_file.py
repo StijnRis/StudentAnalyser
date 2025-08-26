@@ -42,7 +42,6 @@ def _check_duplicates(df, column, labels_column):
     df = df.drop_duplicates(subset=[column])
     return df
 
-
 def _merge_and_update(
     target_df,
     target_merge_on,
@@ -51,7 +50,7 @@ def _merge_and_update(
     labels_column,
     final_column_names,
 ):
-    if labels_df[labels_merge_on].duplicated().any() == False:
+    if labels_df[labels_merge_on].duplicated().any():
         raise ValueError(
             f"Column '{labels_merge_on}' in labels DataFrame must not contain duplicates."
         )
