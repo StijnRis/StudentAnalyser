@@ -182,6 +182,8 @@ def write_to_excel(file_path: str):
             except Exception as e:
                 print(f"Error closing workbook: {e}")
                 input("Press Enter to retry...")
-        print(f"Data successfully written to {file_path}")
+        # Print clickable file path (handles spaces)
+        print(f'Data successfully written to "{file_path}"')
+        print(f'Open file: file://{file_path.replace(" ", "%20")}')
 
     return write_to_excel

@@ -222,7 +222,7 @@ def add_error_learning_goal_by_user_fix(learning_goals: list[LearningGoal]):
             ranges = row["ranges_of_changed_code_next_success"]
             return get_ast_nodes_for_ranges(code_next_version, ranges)
         
-        def convert_all_ast_nodes_to_strings(row):
+        def compute_constructs_as_strings(row):
             nodes = row["changed_constructs_next_success"]
             return convert_ast_nodes_to_strings(nodes)
 
@@ -246,7 +246,7 @@ def add_error_learning_goal_by_user_fix(learning_goals: list[LearningGoal]):
         ]
 
         merged["changed_constructs_as_string_next_success"] = merged.apply(
-            convert_all_ast_nodes_to_strings, axis=1
+            compute_constructs_as_strings, axis=1
         )
         execution_errors_df["changed_constructs_as_string_next_success"] = merged[
             "changed_constructs_as_string_next_success"

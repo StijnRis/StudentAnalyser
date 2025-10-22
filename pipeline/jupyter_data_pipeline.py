@@ -45,16 +45,17 @@ from messages.message_analyser import (
 from pipeline.pipeline import run_pipeline
 from plots.confusion_matrix import plot_confusion_matrix
 from plots.correlation_matrix import plot_correlation_matrix
-from plots.scatter_plot import (
-    plot_scatter_plot,
-    plot_scatter_plot_with_multiple_datasets,
-)
+from plots.scatter_plot import plot_scatter_plot
 from plots.violin_plot import plot_violin_plot
+from timeline.timeline_analyser import add_timeline_df
 from users.user_analyser import (
+    add_aggregate_construct_series,
+    add_aggregate_learning_goal_series,
     add_basic_interaction_statistics,
-    add_basic_learning_goals_statistics,
+    add_basic_statistics_for_series,
     add_basic_user_statistics,
     add_bayesian_knowledge_tracing,
+    add_construct_result_series,
     add_learning_goals_result_series,
     add_moving_average,
 )
@@ -107,6 +108,7 @@ def run_jupyter_data_pipeline():
 
         # Define your pipeline steps for this group
         pipeline_steps: List[Callable[[Dict[str, pd.DataFrame]], None]] = [
+            # Load data
             *generate_start_loader_pipeline(
                 BASE_DATA_PATH,
                 METADATA_FOR_ANALYZER_PATH,
@@ -150,85 +152,10 @@ def run_jupyter_data_pipeline():
             ),
             # Users
             add_basic_user_statistics,
+            # Learning goal analysis
             add_learning_goals_result_series(learning_goals),
-            add_basic_learning_goals_statistics(learning_goals),
-            add_bayesian_knowledge_tracing(learning_goals),
-            add_moving_average(learning_goals, window_size=20),
-            add_basic_interaction_statistics(question_types, question_purposes),
-            # Interactions part 2
-            add_increase_in_success_rate,
-            # overview
-            add_execution_overview_df,
-            add_interaction_overview_df,
-            # Plots
-            plot_violin_plot(
-                "interactions",
-                "question_learning_goals",
-                "increase_in_success_rate",
-                group_output_dir,
-            ),
-            plot_violin_plot(
-                "interactions",
-                "question_purpose_by_question_type",
-                "increase_in_success_rate",
-                group_output_dir,
-            ),
-            plot_violin_plot(
-                "interactions",
-                "question_type_by_ai",
-                "increase_in_success_rate",
-                group_output_dir,
-            ),
-            plot_scatter_plot("users", "num_interactions", "grade", group_output_dir),
-            plot_scatter_plot("users", "num_edits", "grade", group_output_dir),
-            plot_scatter_plot("users", "num_executions", "grade", group_output_dir),
-            plot_scatter_plot("users", "num_executed_files", "grade", group_output_dir),
-            plot_scatter_plot(
-                "users", "execution_success_rate", "grade", group_output_dir
-            ),
-            plot_scatter_plot_with_multiple_datasets(
-                "users",
-                "Question type",
-                [f"num_{x.name}_questions" for x in question_types],
-                "grade",
-                group_output_dir,
-            ),
-            plot_scatter_plot_with_multiple_datasets(
-                "users",
-                "Question purpose",
-                [f"num_{x.name}_questions" for x in question_purposes],
-                "grade",
-                group_output_dir,
-            ),
-            plot_scatter_plot_with_multiple_datasets(
-                "users",
-                "Learning goal success rate",
-                [f"{x.name}_average_success" for x in learning_goals],
-                "grade",
-                group_output_dir,
-            ),
-            plot_scatter_plot_with_multiple_datasets(
-                "users",
-                "Learning goal number of practices",
-                [f"{x.name}_num_practices" for x in learning_goals],
-                "grade",
-                group_output_dir,
-            ),
-            plot_scatter_plot_with_multiple_datasets(
-                "users",
-                "Learning goal number of successes",
-                [f"{x.name}_num_successes" for x in learning_goals],
-                "grade",
-                group_output_dir,
-            ),
-            plot_scatter_plot_with_multiple_datasets(
-                "users",
-                "Learning goal number of failures",
-                [f"{x.name}_num_failures" for x in learning_goals],
-                "grade",
-                group_output_dir,
-            ),
-            # Learning goals in error check
+            add_aggregate_learning_goal_series(learning_goals),
+            add_basic_statistics_for_series("all_learning_goals_series"),
             plot_confusion_matrix(
                 "execution_errors",
                 "learning_goals_in_error_by_Stijn",
@@ -243,7 +170,70 @@ def run_jupyter_data_pipeline():
                 True,
                 group_output_dir,
             ),
-            # Plot confusion matrices for question types
+            plot_scatter_plot(
+                "users",
+                "all_learning_goals_series_average_success",
+                "grade",
+                group_output_dir,
+            ),
+            plot_scatter_plot(
+                "users", "all_learning_goals_series_slope", "grade", group_output_dir
+            ),
+            plot_scatter_plot(
+                "users",
+                "all_learning_goals_series_num_practices",
+                "grade",
+                group_output_dir,
+            ),
+            plot_scatter_plot(
+                "users",
+                "all_learning_goals_series_num_successes",
+                "grade",
+                group_output_dir,
+            ),
+            plot_scatter_plot(
+                "users", "all_learning_goals_series_num_failures", "grade", group_output_dir
+            ),
+            add_bayesian_knowledge_tracing(learning_goals),
+            add_moving_average(learning_goals, window_size=20),
+            add_basic_interaction_statistics(question_types, question_purposes),
+            # Interactions part 2
+            add_increase_in_success_rate,
+            # overview
+            add_execution_overview_df,
+            add_interaction_overview_df,
+            # timeline
+            add_timeline_df,
+            # Construct analysis
+            add_construct_result_series,
+            add_aggregate_construct_series,
+            add_basic_statistics_for_series("all_constructs_series"),
+            plot_scatter_plot(
+                "users",
+                "all_constructs_series_average_success",
+                "grade",
+                group_output_dir,
+            ),
+            plot_scatter_plot(
+                "users", "all_constructs_series_slope", "grade", group_output_dir
+            ),
+            plot_scatter_plot(
+                "users",
+                "all_constructs_series_num_practices",
+                "grade",
+                group_output_dir,
+            ),
+            plot_scatter_plot(
+                "users",
+                "all_constructs_series_num_successes",
+                "grade",
+                group_output_dir,
+            ),
+            plot_scatter_plot(
+                "users", "all_constructs_series_num_failures", "grade", group_output_dir
+            ),
+            
+            # Plots: question types classification check
             plot_confusion_matrix(
                 "interactions",
                 "question_type_by_Thom",
@@ -258,6 +248,7 @@ def run_jupyter_data_pipeline():
             #     True,
             #     group_output_dir,
             # ),
+            # Plots: question type vs interaction outcomes
             plot_violin_plot(
                 "interactions",
                 "question_type_by_ai",
@@ -276,6 +267,7 @@ def run_jupyter_data_pipeline():
                 "time_until_next_execution",
                 group_output_dir,
             ),
+            # Plots: correlation between basic interaction statistics
             plot_correlation_matrix(
                 "interactions",
                 [
@@ -286,6 +278,7 @@ def run_jupyter_data_pipeline():
                 ],
                 group_output_dir,
             ),
+            # Plots: correlation between basic user statistics
             plot_correlation_matrix(
                 "users",
                 [

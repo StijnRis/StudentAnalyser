@@ -56,9 +56,6 @@ def get_ast_nodes_for_ranges(
         When node fully covers a range, this range is removed from possible_ranges.
         """
 
-        for child in ast.iter_child_nodes(node):
-            bfs(child)
-
         if hasattr(node, "lineno"):
             if not hasattr(node, "col_offset"):
                 raise ValueError(
@@ -74,27 +71,37 @@ def get_ast_nodes_for_ranges(
                         nodes.append(node)
 
                         # If the node fully covers the range, remove it from possible_ranges
-                        if node_start <= column_start and node_end >= column_end:
-                            possible_ranges.discard((line, column_start, column_end))
+                        # if node_start <= column_start and node_end >= column_end:
+                        #     possible_ranges.discard((line, column_start, column_end))
 
-                        return
+                        break
+
+        for child in ast.iter_child_nodes(node):
+            bfs(child)
 
     bfs(parsed_ast)
 
     return nodes
 
+
 def convert_ast_nodes_to_strings(nodes: list[ast.AST]) -> list[str]:
     result = []
     for node in nodes:
-        # Add the AST node type
-        result.append(type(node).__name__)
 
-        # Check for function calls like input(), print(), etc.
+        # Add the AST node type
         if isinstance(node, ast.Call):
+            # Handle function calls separately to capture function names
             if isinstance(node.func, ast.Name):
-                result.append(f"Call:{node.func.id}")
+                result.append(f"Call::{node.func.id}")
             elif isinstance(node.func, ast.Attribute):
-                result.append(f"Call:{node.func.attr}")
+                result.append(f"Call::{node.func.attr}")
+            else:
+                result.append("Call::unknownFunction")
+        if isinstance(node, ast.Constant):
+            result.append(f"Constant::{type(node.value).__name__}")
+        else:
+            result.append(type(node).__name__)
+
     return result
 
 

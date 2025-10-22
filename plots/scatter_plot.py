@@ -124,7 +124,7 @@ def plot_scatter_plot_with_multiple_datasets(
 
         plt.tight_layout()
         plt.savefig(
-            f"{output_dir}/scatter_plot_{dataframe_name}_{x_label}_vs_{y_column}.png"
+            f"{output_dir}/scatter_plots_{dataframe_name}_{x_label}_vs_{y_column}.png"
         )
         plt.close(fig)
 

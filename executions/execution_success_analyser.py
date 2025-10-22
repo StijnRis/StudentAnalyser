@@ -4,6 +4,7 @@ import pandas as pd
 
 from enums import LearningGoal
 from executions.execution_utils import (
+    convert_ast_nodes_to_strings,
     detect_learning_goals,
     get_ast_nodes_for_ranges,
     get_ranges_of_changed_code,
@@ -19,7 +20,7 @@ def add_execution_successes_df(data: Dict[str, pd.DataFrame]) -> None:
     successes = executions_df[executions_df["success"] == True]
     execution_successes_df = pd.DataFrame(
         {
-            "success_id": successes.index,
+            "execution_success_id": successes.index,
             "execution_id": successes["execution_id"],
         }
     ).reset_index(drop=True)
@@ -68,7 +69,7 @@ def add_new_code_analysis(learning_goals: list[LearningGoal]):
             suffixes=("", "_previous_version"),
         )
 
-        def compute_line_numbers_of_new_code(row):
+        def compute_ranges_of_new_code(row):
             code_previous_version = (
                 row["code_previous_version"]
                 if pd.notnull(row["code_previous_version"])
@@ -86,16 +87,29 @@ def add_new_code_analysis(learning_goals: list[LearningGoal]):
             constructs = row["added_constructs"]
             return detect_learning_goals(constructs, learning_goals)
 
+        def compute_added_constructs_as_string(row):
+            nodes = row["added_constructs"]
+            return convert_ast_nodes_to_strings(nodes)
+
         # Compute all columns in sequence
 
         merged["ranges_of_new_code"] = merged.apply(
-            compute_line_numbers_of_new_code, axis=1
+            compute_ranges_of_new_code, axis=1
         )
         execution_successes_df["ranges_of_new_code"] = merged["ranges_of_new_code"]
+
         merged["added_constructs"] = merged.apply(
             compute_added_constructs, axis=1
         ).astype(object)
         execution_successes_df["added_constructs"] = merged["added_constructs"]
+
+        merged["added_constructs_as_string"] = merged.apply(
+            compute_added_constructs_as_string, axis=1
+        )
+        execution_successes_df["added_constructs_as_string"] = merged[
+            "added_constructs_as_string"
+        ]
+
         merged["learning_goals_of_added_code"] = merged.apply(
             compute_learning_goals_of_added_code, axis=1
         )

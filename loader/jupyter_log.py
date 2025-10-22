@@ -167,7 +167,7 @@ def load_jupyter_log(
     Loads all file version, execution, and edit logs in a folder and returns DataFrames:
     - file_versions: time, file, cell_index, user_id, code
     - executions: user_id, time, file, event_type
-    - execution_success_outputs: execution_id, output_type, output_text
+    - execution_outputs: execution_id, output_type, output_text
     - execution_errors: execution_id, error_name, error_value, traceback, output_text
     - edits: time, event_type, file, selection, user_id
     """
@@ -188,7 +188,7 @@ def load_jupyter_log(
 
         file_versions_df = data.get("file_versions", pd.DataFrame())
         executions_df = data.get("executions", pd.DataFrame())
-        outputs_df = data.get("execution_success_outputs", pd.DataFrame())
+        outputs_df = data.get("execution_outputs", pd.DataFrame())
         errors_df = data.get("execution_errors", pd.DataFrame())
         edits_df = data.get("edits", pd.DataFrame())
 
@@ -201,7 +201,7 @@ def load_jupyter_log(
             executions_df["execution_id"].max() + 1 if not executions_df.empty else 0
         )
         outputs_id_offset = (
-            outputs_df["execution_success_output_id"].max() + 1
+            outputs_df["execution_output_id"].max() + 1
             if not outputs_df.empty
             else 0
         )
@@ -283,10 +283,10 @@ def load_jupyter_log(
         )
         new_success_outputs_df.insert(
             0,
-            "execution_success_output_id",
+            "execution_output_id",
             range(outputs_id_offset, outputs_id_offset + len(outputs)),
         )
-        data["execution_success_outputs"] = pd.concat(
+        data["execution_outputs"] = pd.concat(
             [outputs_df, new_success_outputs_df], ignore_index=True
         )
 

@@ -147,9 +147,7 @@ def add_surrounding_executions(data: Dict[str, pd.DataFrame]) -> None:
             group["file_version_id"].where(error_mask).bfill().shift(-1)
         )
         # Previous execution
-        group["is_previous_execution_success"] = (
-            group["success"].shift(1).fillna(False).astype(bool)
-        )
+        group["is_previous_execution_success"] = group["success"].shift(1).eq(True)
         # Assign back
         executions_df.loc[
             group["index"],

@@ -65,7 +65,6 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
     def add_learning_goals_result_series(
         data: Dict[str, pd.DataFrame],
     ) -> None:
-
         users_df = data["users"]
         executions_df = data["executions"]
         execution_successes_df = data["execution_successes"]
@@ -88,110 +87,128 @@ def add_learning_goals_result_series(learning_goals: list[LearningGoal]):
             how="left",
         )
 
-        # For each user and each learning goal, create a Series of (datetime, result)
+        # Collect new columns in a dict
+        new_cols = {}
+
+        def build_result_series(user, goal):
+            user_success = success_merged[
+                (success_merged["user_id"] == user)
+                & (
+                    success_merged["learning_goals_of_added_code"].apply(
+                        lambda goals: goal in goals
+                    )
+                )
+            ]
+            user_error = error_merged[
+                (error_merged["user_id"] == user)
+                & (error_merged["is_previous_execution_success"] == True)
+                & (
+                    error_merged["learning_goals_in_error_by_user_fix"].apply(
+                        lambda goals: goal in goals
+                    )
+                )
+            ]
+            success_df = pd.DataFrame(
+                {"datetime": user_success["datetime"], "result": True}
+            )
+            error_df = pd.DataFrame(
+                {"datetime": user_error["datetime"], "result": False}
+            )
+            combined = (
+                pd.concat([success_df, error_df])
+                .sort_values("datetime")
+                .reset_index(drop=True)
+            )
+            return combined
+
         for goal in learning_goals:
             col_name = f"{goal.name}_series"
+            new_cols[col_name] = (
+                users_df["user_id"]
+                .map(lambda user: build_result_series(user, goal))
+                .astype(object)
+            )
 
-            def build_result_series(user):
-                user_success = success_merged[
-                    (success_merged["user_id"] == user)
-                    & (
-                        success_merged["learning_goals_of_added_code"].apply(
-                            lambda goals: (goal in goals)
-                        )
-                    )
-                ]
-                # Filter errors where the user has successfully executed before
-                user_error = error_merged[
-                    (error_merged["user_id"] == user)
-                    & (error_merged["is_previous_execution_success"] == True)
-                    & (
-                        error_merged["learning_goals_in_error_by_user_fix"].apply(
-                            lambda goals: (goal in goals)
-                        )
-                    )
-                ]
-                success_df = pd.DataFrame(
-                    {"datetime": user_success["datetime"], "result": True}
-                )
-                error_df = pd.DataFrame(
-                    {"datetime": user_error["datetime"], "result": False}
-                )
-                combined = (
-                    pd.concat([success_df, error_df])
-                    .sort_values("datetime")
-                    .reset_index(drop=True)
-                )
-                return combined
-
-            users_df[col_name] = users_df["user_id"].map(build_result_series)
-            users_df[col_name] = users_df[col_name].astype(object)
-        data["users"] = users_df
+        # Assign all new columns at once
+        users_df = pd.concat(
+            [users_df, pd.DataFrame(new_cols, index=users_df.index)], axis=1
+        )
+        data["users"] = users_df.copy()
 
     return add_learning_goals_result_series
 
 
-def add_basic_learning_goals_statistics(learning_goals: list[LearningGoal]):
-    def add_basic_learning_goals_statistics(data: Dict[str, pd.DataFrame]) -> None:
-        """
-        For each user, for each learning goal, compute the average success rate and the slope coefficient.
-        """
+def add_construct_result_series(data: Dict[str, pd.DataFrame]) -> None:
+    """
+    For each user, for each construct, create a pandas Series with datetime and result (true for success, false for error).
+    """
+    users_df = data["users"]
+    executions_df = data["executions"]
+    execution_successes_df = data["execution_successes"]
+    execution_errors_df = data["execution_errors"]
 
-        users_df = data["users"]
+    # Merge execution_successes with executions to get user_id, datetime, etc.
+    success_merged = execution_successes_df.merge(
+        executions_df, on="execution_id", how="left"
+    )
+    error_merged = execution_errors_df.merge(
+        executions_df, on="execution_id", how="left"
+    )
 
-        for goal in learning_goals:
+    # Collect all constructs
+    all_constructs = set()
+    for constructs in success_merged["added_constructs_as_string"].dropna():
+        all_constructs.update(constructs)
+    for constructs in error_merged[
+        "changed_constructs_as_string_next_success"
+    ].dropna():
+        all_constructs.update(constructs)
 
-            def compute_average(user_result_df):
-                num_true = (user_result_df["result"] == True).sum()
-                num_false = (user_result_df["result"] == False).sum()
-                total = num_true + num_false
-                if total == 0:
-                    return None
-                return num_true / total
-
-            def compute_slope(user_result_df):
-                if user_result_df.empty or len(user_result_df) < 2:
-                    return None
-                x = user_result_df["datetime"].map(lambda dt: dt.timestamp()).values
-                y = user_result_df["result"].astype(float).values
-
-                slope, intercept, r, p, se = linregress(x, y)
-                return slope
-
-            def compute_num_practices(user_result_df):
-                if user_result_df.empty:
-                    return 0
-                return len(user_result_df)
-
-            def compute_num_successes(user_result_df):
-                if user_result_df.empty:
-                    return 0
-                return (user_result_df["result"] == True).sum()
-
-            def compute_num_failures(user_result_df):
-                if user_result_df.empty:
-                    return 0
-                return (user_result_df["result"] == False).sum()
-
-            # Find the column with the result series for this goal
-            result_col = f"{goal.name}_series"
-            users_df[f"{goal.name}_average_success"] = users_df[result_col].apply(
-                compute_average
+    # Helper function to build result series for a user and construct
+    def build_result_series(user, construct):
+        user_success = success_merged[
+            (success_merged["user_id"] == user)
+            & (
+                success_merged["added_constructs_as_string"].apply(
+                    lambda constructs: construct in constructs
+                )
             )
-            users_df[f"{goal.name}_slope"] = users_df[result_col].apply(compute_slope)
-            users_df[f"{goal.name}_num_practices"] = users_df[result_col].apply(
-                compute_num_practices
+        ]
+        user_error = error_merged[
+            (error_merged["user_id"] == user)
+            & (error_merged["is_previous_execution_success"] == True)
+            & (
+                error_merged["changed_constructs_as_string_next_success"].apply(
+                    lambda constructs: construct in constructs
+                )
             )
-            users_df[f"{goal.name}_num_successes"] = users_df[result_col].apply(
-                compute_num_successes
-            )
-            users_df[f"{goal.name}_num_failures"] = users_df[result_col].apply(
-                compute_num_failures
-            )
+        ]
+        success_df = pd.DataFrame(
+            {"datetime": user_success["datetime"], "result": True}
+        )
+        error_df = pd.DataFrame({"datetime": user_error["datetime"], "result": False})
+        combined = (
+            pd.concat([success_df, error_df])
+            .sort_values("datetime")
+            .reset_index(drop=True)
+        )
+        return combined
 
-        data["users"] = users_df
+    # Build all new columns at once
+    new_cols = {}
+    for construct in all_constructs:
+        col_name = f"{construct}_construct_series"
+        new_cols[col_name] = (
+            users_df["user_id"]
+            .map(lambda user: build_result_series(user, construct))
+            .astype(object)
+        )
 
-    return add_basic_learning_goals_statistics
+    # Assign all new columns at once
+    users_df = pd.concat(
+        [users_df, pd.DataFrame(new_cols, index=users_df.index)], axis=1
+    )
+    data["users"] = users_df.copy()
 
 
 def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
@@ -205,8 +222,8 @@ def add_bayesian_knowledge_tracing(learning_goals: list[LearningGoal]):
         # BKT parameters (can be tuned)
         p_init = 0.1
         p_learn = 0.2
-        p_guess = 0.2
-        p_slip = 0.2
+        p_guess = 0.1
+        p_slip = 0.1
 
         new_cols = {}
         for goal in learning_goals:
@@ -316,3 +333,149 @@ def add_basic_interaction_statistics(
         data["users"] = users_df
 
     return add_basic_interaction_statistics
+
+
+def add_aggregate_construct_series(data: Dict[str, pd.DataFrame]) -> None:
+    """
+    For each user, aggregate all individual construct series into a single series
+    that contains all construct-related practice events (datetime, result).
+    Adds a new column `all_constructs_series` to `users` where each cell is a
+    DataFrame with columns `datetime` and `result`.
+    """
+    users_df = data["users"]
+
+    # find construct series columns (created by add_construct_result_series)
+    construct_cols = [c for c in users_df.columns if c.endswith("_construct_series")]
+
+    def aggregate_series_for_row(row):
+        dfs = []
+        for col in construct_cols:
+            cell = row.get(col) if isinstance(row, dict) else row[col]
+            # cell is expected to be a DataFrame or something similar
+            if isinstance(cell, pd.DataFrame) and not cell.empty:
+                dfs.append(cell)
+        if not dfs:
+            return pd.DataFrame(columns=["datetime", "result"])
+        combined = pd.concat(dfs).sort_values("datetime").reset_index(drop=True)
+        return combined
+
+    # Use apply on rows to keep each user's aggregated series
+    users_df["all_constructs_series"] = users_df.apply(aggregate_series_for_row, axis=1)
+    data["users"] = users_df
+
+
+def add_aggregate_learning_goal_series(learning_goals: list[LearningGoal]):
+    """
+    Returns a function that when given `data` will aggregate all per-learning-goal
+    series columns (created by `add_learning_goals_result_series`) into a single
+    `all_learning_goals_series` column per user.
+    """
+
+    def add_agg(data: Dict[str, pd.DataFrame]) -> None:
+        users_df = data["users"]
+
+        # find learning goal series columns (e.g., <GOAL>_series)
+        goal_cols = [f"{goal.name}_series" for goal in learning_goals]
+
+        def aggregate_series_for_row(row):
+            dfs = []
+            for col in goal_cols:
+                # be tolerant: if column doesn't exist, skip
+                if col not in users_df.columns:
+                    continue
+                cell = row.get(col) if isinstance(row, dict) else row[col]
+                if isinstance(cell, pd.DataFrame) and not cell.empty:
+                    dfs.append(cell)
+            if not dfs:
+                return pd.DataFrame(columns=["datetime", "result"])
+            combined = pd.concat(dfs).sort_values("datetime").reset_index(drop=True)
+            return combined
+
+        users_df["all_learning_goals_series"] = users_df.apply(
+            aggregate_series_for_row, axis=1
+        )
+        data["users"] = users_df
+
+    return add_agg
+
+
+def add_basic_statistics_for_series(series_column: str):
+    """
+    Factory that returns a function which computes basic statistics (average, slope,
+    counts) on a per-user series column `series_column` and stores them with names
+    prefixed by `prefix` (e.g., `prefix_average_success`).
+    """
+
+    def add_stats(data: Dict[str, pd.DataFrame]) -> None:
+        users_df = data["users"]
+
+        def compute_average(user_result_df):
+            if (
+                user_result_df is None
+                or not isinstance(user_result_df, pd.DataFrame)
+                or user_result_df.empty
+            ):
+                return None
+            num_true = (user_result_df["result"] == True).sum()
+            num_false = (user_result_df["result"] == False).sum()
+            total = num_true + num_false
+            if total == 0:
+                return None
+            return num_true / total
+
+        def compute_slope(user_result_df):
+            if (
+                user_result_df is None
+                or not isinstance(user_result_df, pd.DataFrame)
+                or len(user_result_df) < 2
+            ):
+                return None
+            x = user_result_df["datetime"].map(lambda dt: dt.timestamp()).values
+            y = user_result_df["result"].astype(float).values
+            slope, intercept, r, p, se = linregress(x, y)
+            return slope
+
+        def compute_num_practices(user_result_df):
+            if (
+                user_result_df is None
+                or not isinstance(user_result_df, pd.DataFrame)
+                or user_result_df.empty
+            ):
+                return 0
+            return len(user_result_df)
+
+        def compute_num_successes(user_result_df):
+            if (
+                user_result_df is None
+                or not isinstance(user_result_df, pd.DataFrame)
+                or user_result_df.empty
+            ):
+                return 0
+            return (user_result_df["result"] == True).sum()
+
+        def compute_num_failures(user_result_df):
+            if (
+                user_result_df is None
+                or not isinstance(user_result_df, pd.DataFrame)
+                or user_result_df.empty
+            ):
+                return 0
+            return (user_result_df["result"] == False).sum()
+
+        users_df[f"{series_column}_average_success"] = users_df[series_column].apply(
+            compute_average
+        )
+        users_df[f"{series_column}_slope"] = users_df[series_column].apply(compute_slope)
+        users_df[f"{series_column}_num_practices"] = users_df[series_column].apply(
+            compute_num_practices
+        )
+        users_df[f"{series_column}_num_successes"] = users_df[series_column].apply(
+            compute_num_successes
+        )
+        users_df[f"{series_column}_num_failures"] = users_df[series_column].apply(
+            compute_num_failures
+        )
+
+        data["users"] = users_df.copy()
+
+    return add_stats
