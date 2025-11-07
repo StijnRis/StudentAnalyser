@@ -105,7 +105,7 @@ def add_timeline_df(data: Dict[str, pd.DataFrame]) -> None:
     messages_subset = messages_subset.rename(
         columns={"message_id": "event_id", "body": "value"}
     )
-    messages_subset["key"] = messages_subset["sender"].astype(str) + " message"
+    messages_subset["key"] = messages_subset["user_id"].astype(str) + " message"
     messages_subset["event_type"] = "message"
     messages_subset = messages_subset.drop(columns=["sender"])
 

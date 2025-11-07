@@ -63,14 +63,12 @@ def load_chat_log(
                 for msg in file_data.get("messages", []):
                     time = datetime.fromtimestamp(msg["time"])
                     body = msg["body"]
-                    sender = msg["sender"]
-                    automated = msg.get("automated", sender == "Juno")
+                    automated = msg.get("automated", msg["sender"] == "Juno")
                     messages.append(
                         {
                             "user_id": user_id,
                             "datetime": time,
                             "body": body,
-                            "sender": sender,
                             "automated": automated,
                         }
                     )

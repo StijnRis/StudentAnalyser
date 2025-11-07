@@ -3,4 +3,6 @@
 __pycache__/
 output/
 .env
-test.tex
+report/
+anonymization/banned_names.txt
+anonymization/banned_words.txt
