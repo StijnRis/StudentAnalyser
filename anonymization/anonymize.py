@@ -30,7 +30,7 @@ paths = [
     Path(
         "C:/University/Honours/Data/StanislasExperiment1/Consent forms/studentnummers_of_accepted_consent_forms.txt"
     ),
-    Path("C:/University/Honours/StudentAnalyser/anonymization/banned_names.txt"),
+    Path("C:/University/Honours/StudentAnalyser/anonymization/data/banned_persons.txt"),
 ]
 
 names = []
@@ -50,8 +50,11 @@ for n in sorted(names, key=len, reverse=True):
         seen.add(n)
         CUSTOM_NAMES_LIST.append(re.escape(n))
 
-with open("anonymization/banned_words.txt", "r", encoding="utf-8") as f:
+with open("anonymization/data/banned_words.txt", "r", encoding="utf-8") as f:
     BANNED_WORDS = [line.strip() for line in f if line.strip()]
+
+with open("anonymization/data/banned_locations.txt", "r", encoding="utf-8") as f:
+    BANNED_LOCATIONS = [line.strip() for line in f if line.strip()]
 
 
 def anonymize(data: Dict[str, pd.DataFrame]):
@@ -81,11 +84,34 @@ def anonymize(data: Dict[str, pd.DataFrame]):
         ],
     )
 
+    # Recogniser for banned locations
+    banned_locations_recognizer = PatternRecognizer(
+        name="BannedLocationsRecognizer",
+        supported_entity="LOCATION",
+        patterns=[
+            Pattern(
+                regex=r"("
+                + "|".join(re.escape(loc) for loc in BANNED_LOCATIONS)
+                + r")",
+                name="BannedLocationPattern",
+                score=1.0,
+            )
+        ],
+    )
+
     # Recognizer for Dutch postcodes: 4 digits optionally followed by up to 2 letters
     postcode_recognizer = PatternRecognizer(
         name="PostcodeRecognizer",
         supported_entity="POSTCODE",
-        context=["postcode", "post code", "zip code", "zip", "adres", "straat"],
+        context=[
+            "postcode",
+            "post code",
+            "zip code",
+            "zip",
+            "adres",
+            "straat",
+            "woonplaats",
+        ],
         patterns=[
             Pattern(
                 regex=r"(\d{4})",
@@ -93,7 +119,7 @@ def anonymize(data: Dict[str, pd.DataFrame]):
                 score=0.01,
             ),
             Pattern(
-                regex=r"(\d{4}\s?[A-Za-z]{0,2})",
+                regex=r"(\d{4}\s?[A-Za-z]{2})",
                 name="DutchFullPostcode",
                 score=0.8,
             ),
@@ -103,13 +129,48 @@ def anonymize(data: Dict[str, pd.DataFrame]):
     # Recognizer for huisnummer (house number): 1-5 digits with an optional trailing letter
     huisnummer_recognizer = PatternRecognizer(
         name="HuisnummerRecognizer",
-        supported_entity="HOUENUMBER",
-        context=["huisnummer", "house number", "address number", "adres", "straat", "housenumber"],
+        supported_entity="HOUSENUMBER",
+        context=[
+            "huisnummer",
+            "house number",
+            "address number",
+            "adres",
+            "straat",
+            "housenumber",
+            "wonen",
+            "woont",
+            "living at",
+        ],
         patterns=[
             Pattern(
                 regex=r"\b\d{1,5}[A-Za-z]?\b",
                 name="HuisnummerPattern",
                 score=0.01,
+            )
+        ],
+    )
+
+    age_recognizer = PatternRecognizer(
+        name="AgeDetectorRecognizer",
+        supported_entity="AGE",
+        context=[
+            "age",
+            "years old",
+            "yrs",
+            "jaar",
+            "jaar oud",
+            "leeftijd",
+        ],
+        patterns=[
+            Pattern(
+                regex=r"(?i)\b([1-9][0-9]?|1[01][0-9])\b",
+                name="OnlyDigitsAgePattern",
+                score=0.01,
+            ),
+            Pattern(
+                regex=r"(?i)\b([1-9][0-9]?|1[01][0-9])\s*(?:years?|yrs?|y\.?|jaar(?:\s*oud)?|jr\.?|j\.?)\b",
+                name="AgePattern",
+                score=0.5,
             )
         ],
     )
@@ -131,26 +192,53 @@ def anonymize(data: Dict[str, pd.DataFrame]):
     )
     analyzer_engine.registry.add_recognizer(custom_names_recognizer)
     analyzer_engine.registry.add_recognizer(banned_words_recognizer)
+    analyzer_engine.registry.add_recognizer(banned_locations_recognizer)
     analyzer_engine.registry.add_recognizer(postcode_recognizer)
     analyzer_engine.registry.add_recognizer(huisnummer_recognizer)
+    analyzer_engine.registry.add_recognizer(age_recognizer)
+
     anonymizer = AnonymizerEngine()
 
     seen_cache: Dict[str, str] = {}
+
+    entities = [
+        "AGE",
+        "BANNED_WORD",
+        "DATE_TIME",
+        "EMAIL_ADDRESS",
+        "HOUSENUMBER",
+        "IBAN_CODE",
+        "IP_ADDRESS",
+        "LOCATION",
+        "NRP",
+        "PERSON",
+        "PHONE_NUMBER",
+        "POSTCODE",
+        "URL",
+    ]
 
     def anonymize_text(text: str, pbar: tqdm) -> str:
         # Advance the progress bar for each invocation (even if cached)
         pbar.update(1)
 
-        # Skip non-strings or excessively large texts
-        if not isinstance(text, str) or len(text) > 5000:
-            return "<TOO_LONG_TEXT_TO_ANONYMIZE>"
+        # Skip non-strings
+        if not isinstance(text, str):
+            return text
+
+        # Skip excessively large texts
+        if len(text) > 3000:
+            return "<TEXT_TOO_LONG_TO_ANONYMIZE>"
 
         # Return cached result if available
         if text in seen_cache:
             return seen_cache[text]
 
-        nl_results = analyzer_engine.analyze(text=text, language="nl")
-        en_results = analyzer_engine.analyze(text=text, language="en")
+        nl_results = analyzer_engine.analyze(
+            text=text, language="nl", entities=entities
+        )
+        en_results = analyzer_engine.analyze(
+            text=text, language="en", entities=entities
+        )
         combined_results = nl_results + en_results
         anonymized = anonymizer.anonymize(text=text, analyzer_results=combined_results)
         result_text = anonymized.text
@@ -160,7 +248,6 @@ def anonymize(data: Dict[str, pd.DataFrame]):
 
         return result_text
 
-    # ... rest of your anonymize_dataframe and calls ...
     def anonymize_dataframe(dataframe: str, column: str):
         pbar = tqdm(
             total=len(data[dataframe]), desc=f"Anonymizing {dataframe} {column}"
@@ -174,5 +261,5 @@ def anonymize(data: Dict[str, pd.DataFrame]):
     anonymize_dataframe("execution_errors", "traceback")
     anonymize_dataframe("edits", "filename")
     anonymize_dataframe("edits", "selection")
-    data["users"]["username"] = "<PERSON>"
+    data["users"].drop(columns=["username", "group"], inplace=True)
     anonymize_dataframe("messages", "body")

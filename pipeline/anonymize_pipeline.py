@@ -6,6 +6,7 @@ import pandas as pd
 from anonymization.anonymize import anonymize
 from loader.loader_pipeline import generate_start_loader_pipeline
 from pipeline.pipeline import run_pipeline
+from writer.csv import write_to_csv
 from writer.excel import write_to_excel
 
 
@@ -53,6 +54,7 @@ def run_anonymize_pipeline():
             ),
             anonymize,
             write_to_excel(f"{group_output_dir}/jupyter_data_anonymized.xlsx"),
+            write_to_csv(f"{group_output_dir}/csv_data_anonymized"),
         ]
 
         # Run the pipeline for this group

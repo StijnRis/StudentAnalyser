@@ -4,5 +4,4 @@ __pycache__/
 output/
 .env
 report/
-anonymization/banned_names.txt
-anonymization/banned_words.txt
+anonymization/data
